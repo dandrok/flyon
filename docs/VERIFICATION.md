@@ -12,6 +12,7 @@ before quoting them.
 - [Cost is per segment, not per minute](#cost-is-per-segment-not-per-minute)
 - [What this decided](#what-this-decided)
 - [Hallucination on non-speech — and the fix](#hallucination-on-non-speech--and-the-fix)
+- [A real call — 2026-11-17](#a-real-call--2026-11-17)
 - [Still not verified](#still-not-verified)
 - [How to reproduce](#how-to-reproduce)
 
@@ -143,18 +144,40 @@ Why it matters even though the segmenter already gates on level: the gate only c
 non-speech. A keyboard, a door, a cough loud enough to clear `voice_threshold` used to reach the
 decoder and could come back as a line. Now it reaches the VAD first.
 
+## A real call — 2026-11-17
+
+The first live run on the machine this was built for: a Signal call on AirPods, 44 s, `small`,
+Polish speakers.
+
+| Thing | Value |
+|---|---|
+| Session | 5 lines, 6 segments (1 silent, 0 failed), 00:44 |
+| Loudest frame | `mic 0.208` · `system 0.188` — both sides of the call arrived |
+| The other side | captured through the sink monitor, as designed: `system` lines are the person on the call |
+| Language | **broken before AC-52, correct after**: 1.5 s Polish segments came back labelled Hungarian ("Alá, jöksz, játszívja"); with `--language pl` (or the session-level pin) the text is Polish |
+| Notes | `flyon summarize` against a real Ollama (`llama3.2`) wrote a note from a transcript; latency not recorded |
+
+Three device facts that cost an evening and are worth keeping:
+
+- The AirPods microphone only delivers audio **while the call is up**. Outside a call the source is
+  `SUSPENDED`, frames arrive with level `0.000`, and nothing crosses `voice_threshold`. Start
+  `flyon listen` *during* the call, not before it.
+- A 5 s `doctor --probe` is too short to wake the Bluetooth link: it showed 28 frames and peak 0.000,
+  where the same command with `--seconds 10` showed 499 frames and peak 0.049. Give a Bluetooth device
+  ten seconds.
+- `voice_threshold = 0.02` is calibrated for a desktop microphone. A headset mic whose speech peaks at
+  0.049 needs `0.01`, and the "stayed below voice_threshold" warning from AC-50 is what says so.
+
 ## Still not verified
 
-- A real meeting: microphone plus system audio, 5 minutes, two speakers, `large-v3-turbo`. That is
-  M2's stated exit gate, and it needs a call in progress — `flyon listen` on a real machine.
-- **`flyon summarize` against a real Ollama daemon.** The adapter is verified against a stub transport
-  (request shape, error mapping, the answer reader), not against a model on the host yet — so its
-  latency, its patience with a 40-minute transcript, and whether it obeys "answer in the language of
-  the meeting" are all unmeasured.
+- A **5-minute** meeting with two speakers and `large-v3-turbo`. The live run above was 44 s with
+  `small`; the gate in the spec is longer and bigger.
+- **`flyon summarize` latency on a long transcript.** A note was written against a real daemon; how long
+  an hour-long transcript takes, and whether the model holds the language rule that far, is unmeasured.
+- Mixed Polish/English inside one sentence: one language per session is the honest limit (AC-52), and
+  no measurement says how badly English words degrade in a Polish session.
 - `Ctrl-C` behaviour inside a real terminal with a real recording in flight (tested with fakes only).
 - The first-run download inside `listen` (doctor warns first; the download itself is verified here).
-- Bluetooth microphone and sink in a live call. Both report `SUSPENDED` when idle, so the probe that
-  proves them has to run during the call.
 
 ## How to reproduce
 
