@@ -127,7 +127,7 @@ extra_copy = ""          # e.g. "~/Documents/obsidian-root/Meetings"
 ```bash
 make venv     # .venv on 3.14
 make check    # lint + types + tests, the same commands CI runs
-make e2e      # slow tests
+make e2e      # slow tests; the real-model one needs `uv sync --extra stt` (75 MB model)
 ```
 
 ## Docs
@@ -136,6 +136,7 @@ make e2e      # slow tests
 - [`DESIGN.md`](DESIGN.md) — the pipeline, the ports, and the trade-offs behind them
 - [`AGENTS.md`](AGENTS.md) — how an agent should work in this repo
 - [`docs/RELEASING.md`](docs/RELEASING.md) — when a version is worth publishing, and how
+- [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — what has actually been measured on real hardware
 - [`docs/adr/`](docs/adr/) — one decision per file
 
 ---

@@ -20,7 +20,7 @@ Publish when the version does something a stranger can use, not when the repo is
 
 The first upload **claims the PyPI name permanently** — a release can be yanked but never deleted, and
 the version number is never reusable. That is the whole reason not to publish a 0.0.1 today: nothing
-here has transcribed a single real sentence yet.
+here has transcribed a real meeting yet.
 
 ## The one-time setup only you can do
 
@@ -39,6 +39,7 @@ Until step 2 is done, the publish step fails with an authentication error and no
 
 ```bash
 git switch main && git pull
+uv sync --extra stt && make e2e    # the real model, real speech: docs/VERIFICATION.md
 make release VERSION=0.1.0        # bumps pyproject, dates the CHANGELOG section, prints next steps
 git switch -c release/0.1.0
 git add -A && git commit -m "chore: release 0.1.0"

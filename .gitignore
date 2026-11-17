@@ -17,6 +17,8 @@ htmlcov/
 *.m4a
 *.jsonl
 !tests/fixtures/*.jsonl
+# one exception: synthetic speech (espeak), so the real-model test has something to hear
+!tests/fixtures/speech/*.wav
 
 .env
 .env.local
