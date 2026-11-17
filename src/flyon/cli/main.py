@@ -141,7 +141,10 @@ def listen(
     ] = "",
     source: Annotated[
         str,
-        typer.Option("--source", help="parec (real audio) or fake (scripted)."),
+        typer.Option(
+            "--source",
+            help="parec (real audio), fake (scripted), or wav:<file> (16 kHz mono WAV as the mic).",
+        ),
     ] = "parec",
     quiet: Annotated[
         bool, typer.Option("--quiet", "-q", help="Record without printing each line.")
@@ -185,11 +188,14 @@ def listen(
         f"{summary.failed_segments} failed) · {render.duration_text(duration)} · "
         f"saved as {summary.session.session_id}"
     )
+    declared = capturer.streams
+    peaks = {
+        stream: level
+        for stream, level in summary.peak_level.items()
+        if declared.get(stream) != "silence"
+    }
     render.print_levels(
-        target,
-        summary.peak_level,
-        threshold=settings.segmenter.voice_threshold,
-        lines=len(summary.lines),
+        target, peaks, threshold=settings.segmenter.voice_threshold, lines=len(summary.lines)
     )
     target.print(f"[dim]flyon show {summary.session.session_id[:8]}[/dim]")
 

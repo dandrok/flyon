@@ -8,14 +8,20 @@ parametrization and inherits the whole check list.
 from __future__ import annotations
 
 import struct
+from pathlib import Path
 
 import pytest
 
 from flyon.adapters.capture.fake import FakeCapturer
 from flyon.adapters.capture.parec import ParecCapturer
+from flyon.adapters.capture.wav import WavCapturer
 from flyon.domain.pcm import FRAME_MS, bytes_per_frame, rms_level
 from flyon.domain.segment import MIC, STREAMS, SYSTEM
 from flyon.ports.capturer import Capturer, CapturerError
+
+SPEECH_FIXTURE = (
+    Path(__file__).parent.parent / "fixtures" / "speech" / "start-with-the-migration.16k.wav"
+)
 
 SCRIPT: tuple[tuple[str, float], ...] = (
     (MIC, 0.0),
@@ -44,10 +50,12 @@ def silence_frames(count: int) -> bytes:
     return struct.pack(f"<{320 * count}h", *([0] * 320 * count))
 
 
-@pytest.fixture(params=["fake", "parec"])
+@pytest.fixture(params=["fake", "parec", "wav"])
 def capturer(request: pytest.FixtureRequest) -> Capturer:
     if request.param == "fake":
         return FakeCapturer(SCRIPT)
+    if request.param == "wav":
+        return WavCapturer(SPEECH_FIXTURE)
     return ParecCapturer(
         {MIC: "@DEFAULT_SOURCE@", SYSTEM: "sink.monitor"},
         spawn=lambda argv: FakeProcess(silence_frames(3)),

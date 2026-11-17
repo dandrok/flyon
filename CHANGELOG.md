@@ -9,6 +9,10 @@ existing database or CLI invocation may stop working; a patch bump never does.
 
 ### Added
 
+- `flyon listen --source wav:<file>`: a 16 kHz mono WAV replayed as the microphone, so the whole loop —
+  capture, segmentation, transcription, store — runs on a machine with no working capture device. It
+  exists because a broken microphone and a broken pipeline look identical from the outside; with this
+  they don't. A wrong-format file gets one error naming the `ffmpeg` command that fixes it.
 - `flyon summarize <prefix>`: writes the minutes of a session — summary, decisions, action items and
   open questions — as markdown into `<data-dir>/notes/`, with front-matter naming the session, date,
   duration and streams. Works on an interrupted session too.

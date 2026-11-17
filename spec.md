@@ -214,6 +214,14 @@ real model by AC-41.
   "0 lines" on its own is not a diagnosis — it is the one output that leaves the user with nothing to
   act on.
 
+- **AC-51 — a WAV file is a capture source, so the loop is testable without a device.** `flyon listen
+  --source wav:<file>` replays a 16 kHz mono `s16le` WAV on the microphone stream and declares the
+  system stream silent, because a fixture is one voice; a file in the wrong format is one
+  `CapturerError` naming the exact `ffmpeg` command, and both streams still share the frame timeline.
+  The point is diagnostic: with a real model this transcribes the committed fixture end to end
+  through the CLI with no sound card anywhere, which is the only way to tell "the pipeline is broken"
+  apart from "your microphone is not delivering audio".
+
 **Still to build:** nothing for M2; M3 (notes) is untouched.
 
 - Both streams share a monotonic timeline, so a `mic` segment and a `system` segment can be ordered
@@ -316,6 +324,7 @@ argued into the default; it has to be measured against a local one.
 | AC-45 | `tests/unit/test_prompt.py` |
 | AC-46 … AC-49 | `tests/unit/test_notes_app.py`, `tests/unit/test_cli.py` |
 | AC-50 | `tests/unit/test_render.py`, `tests/unit/test_session.py`, `tests/unit/test_listen.py` |
+| AC-51 | `tests/unit/test_wav_capturer.py`, `tests/contract/test_capturer.py`, `tests/e2e/test_real_whisper.py` |
 | config load + overrides | `tests/unit/test_config.py` |
 
 ## Out of scope

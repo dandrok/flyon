@@ -66,6 +66,18 @@ To see the whole loop with no microphone and no model download:
 flyon listen --source fake --engine fake
 ```
 
+To test the real engine against a real voice without any capture device — this is the run to use when
+a microphone is being difficult:
+
+```bash
+espeak-ng -w /tmp/speech.wav "shall we start with the migration"
+ffmpeg -y -i /tmp/speech.wav -ar 16000 -ac 1 -c:a pcm_s16le /tmp/speech16k.wav
+flyon listen --source wav:/tmp/speech16k.wav --title "wav test"
+```
+
+The WAV becomes the microphone; the system stream is silence, because a fixture is one voice. If that
+transcribes and a live recording does not, the pipeline is fine and the microphone is the problem.
+
 ## Writing the minutes
 
 ```bash

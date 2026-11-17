@@ -96,6 +96,34 @@ def test_a_segment_length_clip_still_produces_text() -> None:
     assert result.engine == "faster-whisper"
 
 
+def test_the_whole_loop_runs_from_a_wav_file(tmp_path: Path) -> None:
+    """AC-51: capture, segment, transcribe and store with no microphone and no sound card.
+
+    This is the test that separates "the pipeline is broken" from "your device is not delivering
+    audio" — the two look identical from the outside, and only one of them is flyon's problem.
+    """
+    from typer.testing import CliRunner
+
+    from flyon.cli.main import app
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "--data-dir",
+            str(tmp_path / "data"),
+            "listen",
+            "--source",
+            f"wav:{SPEECH}",
+            "--title",
+            "wav fixture",
+        ],
+    )
+
+    assert result.exit_code == 0, result.stderr
+    assert "migration" in result.stdout.lower()
+    assert "1 lines" in result.stdout
+
+
 def test_digital_silence_produces_no_text() -> None:
     """AC-41: a silent segment must not invent a sentence, or the transcript fills with ghosts.
 
