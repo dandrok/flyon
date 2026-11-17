@@ -135,6 +135,7 @@ make e2e      # slow tests
 - [`spec.md`](spec.md) — what each milestone must do, as testable criteria
 - [`DESIGN.md`](DESIGN.md) — the pipeline, the ports, and the trade-offs behind them
 - [`AGENTS.md`](AGENTS.md) — how an agent should work in this repo
+- [`docs/RELEASING.md`](docs/RELEASING.md) — when a version is worth publishing, and how
 - [`docs/adr/`](docs/adr/) — one decision per file
 
 ---
