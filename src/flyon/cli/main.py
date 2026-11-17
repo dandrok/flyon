@@ -149,6 +149,14 @@ def listen(
     quiet: Annotated[
         bool, typer.Option("--quiet", "-q", help="Record without printing each line.")
     ] = False,
+    language: Annotated[
+        str,
+        typer.Option(
+            "--language",
+            help="Force a language code (pl, en), for meetings that are not auto-detected.",
+            show_default=False,
+        ),
+    ] = "",
 ) -> None:
     """Record, transcribe as you talk, and save the session. Ctrl-C stops."""
     from flyon.app.session import SessionRecorder
@@ -161,7 +169,7 @@ def listen(
     settings = context.settings
     try:
         capturer = open_capturer(source)
-        transcriber = open_transcriber(settings, engine or settings.engine)
+        transcriber = open_transcriber(settings, engine or settings.engine, language or None)
     except (ValueError, CapturerError, TranscriberError) as exc:
         typer.echo(f"flyon: {exc}", err=True)
         raise typer.Exit(2) from exc

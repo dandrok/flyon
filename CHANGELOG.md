@@ -9,6 +9,9 @@ existing database or CLI invocation may stop working; a patch bump never does.
 
 ### Added
 
+- `flyon listen --language pl`: forces a language for one meeting. Without it the engine now decides
+  the language **once per session** from ~6 s of evidence and sticks to it, instead of guessing from
+  every 1.5 s fragment — which is what turned Polish speech into a Hungarian transcript.
 - `flyon listen --source wav:<file>`: a 16 kHz mono WAV replayed as the microphone, so the whole loop —
   capture, segmentation, transcription, store — runs on a machine with no working capture device. It
   exists because a broken microphone and a broken pipeline look identical from the outside; with this

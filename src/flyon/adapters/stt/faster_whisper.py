@@ -83,6 +83,7 @@ class FasterWhisperTranscriber:
         device: str = "cpu",
         vad_filter: bool = True,
         model_factory: ModelFactory | None = None,
+        language_pin_after_s: float = 6.0,
     ) -> None:
         self._model_name = model
         self._cache_dir = cache_dir
@@ -92,6 +93,10 @@ class FasterWhisperTranscriber:
         self._device = device
         self._vad_filter = vad_filter
         self._factory = model_factory
+        self._pin_after_s = language_pin_after_s
+        self._votes: dict[str, float] = {}
+        self._heard_s = 0.0
+        self._pinned: str | None = None
         self._instance: Any | None = None
         self._lock = threading.Lock()
 
@@ -107,10 +112,11 @@ class FasterWhisperTranscriber:
         if not pcm:
             return Transcription(text="", engine=self.name, model=self._model_name)
         audio = to_float32(pcm, sample_rate)
+        seconds = len(pcm) / (sample_rate * SAMPLE_WIDTH)
         try:
-            segments, _info = self._engine().transcribe(
+            segments, info = self._engine().transcribe(
                 audio,
-                language=self._language,
+                language=self._language or self._pinned,
                 beam_size=self._beam_size,
                 vad_filter=self._vad_filter,
                 condition_on_previous_text=False,
@@ -118,7 +124,35 @@ class FasterWhisperTranscriber:
             text = " ".join(getattr(segment, "text", "").strip() for segment in segments).strip()
         except Exception as exc:  # any engine failure is one failure here
             raise TranscriberError(f"{self._model_name} failed: {exc}") from exc
+        self._learn_language(info, seconds)
         return Transcription(text=text, engine=self.name, model=self._model_name)
+
+    def _learn_language(self, info: Any, seconds: float) -> None:
+        """Decide the session's language once, from the evidence heard so far.
+
+        Whisper detects a language per call from that call's audio, and a 1.5 s segment is not
+        enough evidence: Polish in short bursts comes back labelled Hungarian and transliterated. So
+        detections are votes weighted by audio length and confidence, the winner is pinned once
+        enough audio has arrived, and every later call is decoded as that language — which is also
+        cheaper, because the detection pass stops happening.
+        """
+        if self._language is not None or self._pinned is not None:
+            return
+        detected = getattr(info, "language", None)
+        if not detected:
+            return
+        probability = float(getattr(info, "language_probability", 0.0) or 0.0)
+        self._votes[str(detected)] = self._votes.get(str(detected), 0.0) + seconds * max(
+            probability, 0.1
+        )
+        self._heard_s += seconds
+        if self._heard_s >= self._pin_after_s:
+            self._pinned = max(self._votes, key=lambda name: self._votes[name])
+
+    @property
+    def language(self) -> str | None:
+        """What the engine is decoding as: configured, pinned, or still undecided."""
+        return self._language or self._pinned
 
     def _engine(self) -> Any:
         with self._lock:

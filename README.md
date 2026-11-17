@@ -139,7 +139,9 @@ store = "sqlite"         # sqlite (queryable) or jsonl (plain append-only files)
 engine = "faster-whisper"
 model = "small"          # 464 MB, ~1.7 s per segment: keeps up live on CPU.
                          # "large-v3-turbo" (1.6 GB) transcribes better but costs ~7 s per segment
-language = ""            # empty = autodetect
+language = ""            # empty = detect once per session, then stick to it.
+                         # "pl" or "en" pins it for every segment, which is more accurate
+                         # when a meeting is mostly one language with borrowed words
 
 [segmenter]
 voice_threshold = 0.02   # RMS level that counts as speech

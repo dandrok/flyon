@@ -56,7 +56,9 @@ def open_capturer(source: str = "parec") -> Capturer:
     raise ValueError(f"unknown capture source {source!r}; expected 'parec', 'fake' or 'wav:<file>'")
 
 
-def open_transcriber(settings: Settings, engine: str | None = None) -> Transcriber:
+def open_transcriber(
+    settings: Settings, engine: str | None = None, language: str | None = None
+) -> Transcriber:
     """`faster-whisper` is the default; `fake` proves the pipeline without a download."""
     name = (engine or settings.engine).strip()
     if name == "fake":
@@ -68,7 +70,7 @@ def open_transcriber(settings: Settings, engine: str | None = None) -> Transcrib
         return FasterWhisperTranscriber(
             settings.model,
             cache_dir=settings.cache_dir,
-            language=settings.language,
+            language=settings.language if language is None else language,
         )
     raise ValueError(f"unknown engine {name!r}; expected 'faster-whisper' or 'fake'")
 

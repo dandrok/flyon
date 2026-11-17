@@ -33,6 +33,60 @@ def build(model: Any = None, **kwargs: Any) -> FasterWhisperTranscriber:
     return FasterWhisperTranscriber(model="tiny", model_factory=lambda: stub, **kwargs)
 
 
+class LanguageStub:
+    """A model that always reports the same detected language, and records what it was told."""
+
+    def __init__(self, language: str = "pl", probability: float = 0.9) -> None:
+        self.language = language
+        self.probability = probability
+        self.languages: list[str | None] = []
+
+    def transcribe(self, audio: Any, **kwargs: Any) -> tuple[list[Segment], Any]:
+        from types import SimpleNamespace
+
+        self.languages.append(kwargs.get("language"))
+        info = SimpleNamespace(language=self.language, language_probability=self.probability)
+        return [Segment(" cue ")], info
+
+
+def audio_of(seconds: float) -> bytes:
+    return struct.pack(f"<{int(16_000 * seconds)}h", *([1000] * int(16_000 * seconds)))
+
+
+def test_the_detected_language_is_pinned_once_enough_audio_has_been_heard() -> None:
+    # AC-52: a 1.5 s segment is not enough evidence — Polish gets labelled Hungarian
+    stub = LanguageStub("pl", 0.9)
+    transcriber = build(stub)
+
+    for _ in range(4):  # 6 s of audio, all detected as Polish
+        transcriber.transcribe(audio_of(1.5))
+
+    assert transcriber.language == "pl"
+    transcriber.transcribe(audio_of(1.5))
+    assert stub.languages == [None, None, None, None, "pl"]
+
+
+def test_an_explicit_language_is_never_overridden_by_detection() -> None:
+    # AC-52: the config wins, and no detection pass is needed
+    stub = LanguageStub("pl", 0.99)
+    transcriber = build(stub, language="en")
+
+    for _ in range(4):
+        transcriber.transcribe(audio_of(2.0))
+
+    assert transcriber.language == "en"
+    assert stub.languages == ["en"] * 4
+
+
+def test_unconfident_short_audio_does_not_pin_a_language() -> None:
+    # AC-52: guessing early is what produced the Hungarian transcript
+    transcriber = build(LanguageStub("hu", 0.2), language_pin_after_s=6.0)
+
+    transcriber.transcribe(audio_of(1.5))
+
+    assert transcriber.language is None
+
+
 def test_samples_are_scaled_to_float32() -> None:
     audio = to_float32(struct.pack("<2h", 16384, -16384))
     assert audio.dtype.name == "float32"
