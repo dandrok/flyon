@@ -12,6 +12,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
 from typing import Any
+from urllib.parse import urlparse
 
 from flyon.app.prompt import NOTE_SCHEMA, build_messages, parse_note
 from flyon.domain.note import Note
@@ -53,6 +54,13 @@ class OllamaNotes:
         timeout_s: float = 180.0,
         transport: Transport | None = None,
     ) -> None:
+        scheme = urlparse(host).scheme.lower()
+        if scheme not in {"http", "https"}:
+            raise ValueError(
+                f"notes host must be an http(s) URL, got {host!r} — a local daemon lives at "
+                f"{DEFAULT_HOST}, and any other scheme would let the config point at a file "
+                "instead of a server"
+            )
         self._model = model
         self._host = host.rstrip("/")
         self._timeout_s = timeout_s

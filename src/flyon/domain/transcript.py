@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from flyon.domain.segment import STREAM_ORDER, STREAMS
+
+# A session id doubles as a filename in both stores and in the notes directory. It is generated as
+# 12 hex characters (`app.session.new_session_id`); this pattern is looser so fixtures can be short,
+# but it bars `/`, `.` and everything else a path needs — a session id reaches the filesystem as
+# exactly one path segment, or not at all.
+SESSION_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
 class OutOfOrderLine(ValueError):
@@ -68,6 +75,13 @@ class Session:
     started_at: datetime
     ended_at: datetime | None = None
     title: str = ""
+
+    def __post_init__(self) -> None:
+        if not SESSION_ID.match(self.session_id):
+            raise ValueError(
+                f"session_id {self.session_id!r} must be a filename-safe token: letters, digits, "
+                "hyphen or underscore, at most 64 characters"
+            )
 
     @property
     def is_open(self) -> bool:
