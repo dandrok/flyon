@@ -22,6 +22,9 @@ existing database or CLI invocation may stop working; a patch bump never does.
   the pipeline is testable anywhere.
 - The session loop cuts engine input to the exact segment boundaries and keeps only a bounded window
   of audio per stream, so a long meeting does not grow in memory.
+- Verified against a real model: a `slow` test transcribes a committed speech clip with
+  `faster-whisper` itself and asserts the words, the engine and the model it was attributed to.
+  `docs/VERIFICATION.md` records what a download, a load and a segment actually cost on this machine.
 
 ### Infrastructure
 

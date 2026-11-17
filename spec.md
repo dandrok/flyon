@@ -134,7 +134,8 @@ extra or capture tool is a **warn**, not a failure: the read commands work witho
 
 ## M2 — live capture and local STT
 
-**Built (capture half):** AC-27 … AC-31 below are tested; the transcriber half is the next slice.
+**Built (capture half):** AC-27 … AC-31 below are tested; the transcriber half is verified against a
+real model by AC-41.
 
 - **AC-27 — `flyon doctor --probe` records for `--seconds` and reports frames per stream with the
   peak level**, warning when a stream delivers nothing (muted, suspended bluetooth) and failing when
@@ -150,7 +151,7 @@ extra or capture tool is a **warn**, not a failure: the read commands work witho
   criteria against a scripted fake and the real `parec` adapter driven by a fake process; `stop()` is
   idempotent, a second `start()` raises, and a missing binary is a `CapturerError`, not a traceback.
 
-**Built (engine half, wired next):**
+**Built (engine half, wired into `listen`):**
 
 - **AC-32 — one transcriber contract, two engines.** `tests/contract/test_transcriber.py` runs a
   scripted engine and the `faster-whisper` adapter (driven by a stub model) through the same checks:
@@ -182,7 +183,17 @@ extra or capture tool is a **warn**, not a failure: the read commands work witho
   before recording starts, naming `uv tool install 'flyon[stt]'`; an unknown `--source` or `--engine`
   is the same shape of error with the accepted values.
 
-**Still to build:** nothing for M2 except verification against a real model; M3 (notes) is untouched.
+- **AC-41 — a real model transcribes real speech.** `tests/e2e/test_real_whisper.py` is the one test
+  that downloads a model and listens to it: a committed 2.3 s speech fixture goes through the real
+  adapter, and the result must contain the words *start* and *migration* and name the engine and the
+  model. A 1.5 s clip of the same fixture — segment length, which is what this pipeline actually
+  produces — must still return text, and two seconds of digital silence must return none, because a
+  silent segment that invents a sentence poisons the transcript. The test is `slow` (never in
+  `make check`), skips when the `stt` extra is absent, and caches the model in the same directory
+  `listen` uses, so running the tests once means the first meeting downloads nothing. Measured cost
+  (download, load, realtime factor) is recorded in `docs/VERIFICATION.md`.
+
+**Still to build:** nothing for M2; M3 (notes) is untouched.
 
 - Both streams share a monotonic timeline, so a `mic` segment and a `system` segment can be ordered
   against each other.
@@ -234,6 +245,7 @@ extra or capture tool is a **warn**, not a failure: the read commands work witho
 | AC-33 … AC-34 | `tests/unit/test_faster_whisper.py` |
 | AC-36 … AC-38 | `tests/unit/test_session.py` |
 | AC-39 … AC-40 | `tests/unit/test_listen.py` |
+| AC-41 | `tests/e2e/test_real_whisper.py` |
 | config load + overrides | `tests/unit/test_config.py` |
 | M2, M3 | written with their slice |
 
