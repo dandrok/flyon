@@ -346,3 +346,47 @@ def test_the_configured_extra_copy_gets_an_identical_note(data_dir: Path, tmp_pa
     copy = vault / f"{SESSION_ID}.md"
     assert copy.read_bytes() == note.read_bytes()
     assert str(copy) in result.stdout
+
+
+def test_config_shows_where_the_file_lives(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # AC-54: the first question a new install asks
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "cfg"))
+    result = invoke("--data-dir", str(tmp_path / "d"), "config")
+
+    assert result.exit_code == 0
+    assert "config.toml" in result.stdout
+    assert "absent" in result.stdout
+
+
+def test_config_init_writes_the_defaults_and_refuses_to_clobber(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # AC-54: a starter file, and a second run that says why it stopped
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "cfg"))
+    written = invoke("config", "--init")
+
+    assert written.exit_code == 0
+    path = tmp_path / "cfg" / "flyon" / "config.toml"
+    text = path.read_text(encoding="utf-8")
+    assert 'model = "small"' in text
+    assert "[notes]" in text
+
+    again = invoke("config", "--init")
+    assert again.exit_code == 2
+    assert "already exists" in again.stderr
+
+    forced = invoke("config", "--init", "--force")
+    assert forced.exit_code == 0
+
+
+def test_the_written_config_is_the_one_the_cli_then_uses(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # AC-54: writing a config cannot produce a file the loader rejects
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "cfg"))
+    assert invoke("config", "--init").exit_code == 0
+
+    result = invoke("--data-dir", str(tmp_path / "data"), "sessions", "--json")
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout) == {"sessions": []}

@@ -95,6 +95,7 @@ than `min_segment_ms`.
 | `flyon show <id>` | one transcript, `mm:ss` per line, prefixed by stream |
 | `flyon summarize <id>` | write the minutes: summary, decisions, action items, open questions |
 | `flyon doctor` | environment check; `--probe [--seconds N]` records briefly and reports levels |
+| `flyon config` | where `config.toml` lives; `--init` writes a commented file with the defaults |
 
 Useful flags:
 
@@ -110,8 +111,8 @@ Useful flags:
 
 ## Configuration
 
-Every key is optional; the file is `~/.config/flyon/config.toml` and there is no command that writes
-it yet — create it by hand.
+Every key is optional; the file is `~/.config/flyon/config.toml`. `flyon config` says where that is,
+and `flyon config --init` writes a commented file holding these defaults.
 
 ```toml
 store = "sqlite"         # sqlite (queryable) or jsonl (plain append-only files)

@@ -25,3 +25,8 @@ htmlcov/
 .idea/
 .vscode/
 .DS_Store
+
+# demo recording: the tape, the script and the raw fixture stay off the tree
+/demo.tape
+/docs/record-demo.sh
+/docs/demo-raw/

@@ -9,6 +9,9 @@ existing database or CLI invocation may stop working; a patch bump never does.
 
 ### Added
 
+- `flyon config` and `flyon config --init`: the first prints where `config.toml` lives and whether it
+  exists, the second writes a commented file holding the defaults. Until now the README had to say
+  "create it by hand", which is a poor first minute with a new tool.
 - `flyon listen --language pl`: forces a language for one meeting. Without it the engine now decides
   the language **once per session** from ~6 s of evidence and sticks to it, instead of guessing from
   every 1.5 s fragment — which is what turned Polish speech into a Hungarian transcript.
