@@ -7,7 +7,7 @@ Import this module only on the human-output path — `--json` uses `flyon.cli.pa
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 from rich.console import Console
@@ -20,7 +20,15 @@ from flyon.domain.transcript import Line, Session
 if TYPE_CHECKING:
     from flyon.app.notes import NoteResult
 
-__all__ = ["Row", "console", "print_line", "print_lines", "print_note", "print_sessions"]
+__all__ = [
+    "Row",
+    "console",
+    "print_levels",
+    "print_line",
+    "print_lines",
+    "print_note",
+    "print_sessions",
+]
 
 
 def console() -> Console:
@@ -68,6 +76,42 @@ def print_lines(target: Console, session: Session, lines: Sequence[Line]) -> Non
         return
     for line in lines:
         print_line(target, line)
+
+
+def print_levels(
+    target: Console,
+    peaks: Mapping[str, float],
+    *,
+    threshold: float,
+    lines: int,
+) -> None:
+    """Say what the recording actually heard, and what to do when it heard nothing usable.
+
+    An empty transcript is the worst kind of silence: the tool ran, saved a session and printed
+    "0 lines". These are the only three reasons it can happen, and each one is a different fix.
+    """
+    if not peaks:
+        return
+    levels = " · ".join(f"{stream} {level:.3f}" for stream, level in peaks.items())
+    target.print(f"[dim]loudest frame: {levels} · voice_threshold {threshold}[/dim]")
+
+    silent = [stream for stream, level in peaks.items() if level == 0.0]
+    quiet = [stream for stream, level in peaks.items() if 0.0 < level < threshold]
+    if silent:
+        target.print(
+            f"[yellow]nothing arrived from {', '.join(silent)}[/yellow] "
+            "[dim]— muted, suspended bluetooth, or the wrong device[/dim]"
+        )
+    if quiet:
+        target.print(
+            f"[yellow]{', '.join(quiet)} stayed below voice_threshold[/yellow] "
+            "[dim]— lower voice_threshold or raise the input gain[/dim]"
+        )
+    if lines == 0 and not silent and not quiet:
+        target.print(
+            "[yellow]audio cleared the threshold but no segment formed[/yellow] "
+            "[dim]— each burst was shorter than min_segment_ms[/dim]"
+        )
 
 
 def print_note(target: Console, result: NoteResult) -> None:

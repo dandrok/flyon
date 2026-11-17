@@ -207,6 +207,13 @@ real model by AC-41.
   downloads" for a model it has no measurement for, because a guessed size is worse than an admitted
   gap. Measured: `tiny` 75 MB, `base` 142 MB, `small` 464 MB, `large-v3-turbo` 1.6 GB.
 
+- **AC-50 — a recording that produced nothing says why.** `flyon listen` reports the loudest frame it
+  saw on every stream, and when a stream produced no lines it names the cause: nothing arrived (muted,
+  suspended bluetooth, wrong device), audio arrived but stayed below `voice_threshold` (lower it or
+  raise the gain), or audio cleared the threshold but every burst was shorter than `min_segment_ms`.
+  "0 lines" on its own is not a diagnosis — it is the one output that leaves the user with nothing to
+  act on.
+
 **Still to build:** nothing for M2; M3 (notes) is untouched.
 
 - Both streams share a monotonic timeline, so a `mic` segment and a `system` segment can be ordered
@@ -308,6 +315,7 @@ argued into the default; it has to be measured against a local one.
 | AC-44 | `tests/contract/test_notes.py`, `tests/unit/test_ollama.py` |
 | AC-45 | `tests/unit/test_prompt.py` |
 | AC-46 … AC-49 | `tests/unit/test_notes_app.py`, `tests/unit/test_cli.py` |
+| AC-50 | `tests/unit/test_render.py`, `tests/unit/test_session.py`, `tests/unit/test_listen.py` |
 | config load + overrides | `tests/unit/test_config.py` |
 
 ## Out of scope

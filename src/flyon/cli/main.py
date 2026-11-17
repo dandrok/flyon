@@ -185,6 +185,12 @@ def listen(
         f"{summary.failed_segments} failed) · {render.duration_text(duration)} · "
         f"saved as {summary.session.session_id}"
     )
+    render.print_levels(
+        target,
+        summary.peak_level,
+        threshold=settings.segmenter.voice_threshold,
+        lines=len(summary.lines),
+    )
     target.print(f"[dim]flyon show {summary.session.session_id[:8]}[/dim]")
 
 

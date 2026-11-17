@@ -38,6 +38,11 @@ existing database or CLI invocation may stop working; a patch bump never does.
 
 ### Changed
 
+- `flyon listen` now reports the loudest frame it saw on each stream, and when a recording produces no
+  lines it says which of the three reasons it was: nothing arrived (muted or suspended device), audio
+  stayed below `voice_threshold`, or every burst was shorter than `min_segment_ms`. An empty
+  transcript used to leave you with nothing to act on.
+
 - The default model is now `small` (464 MB) instead of `large-v3-turbo`. Live transcription is the
   point and every call costs a full 30 s encoder window, so the big model spent ~7 s on a 5 s segment
   and fell behind a normal turn-taking pace on CPU; `small` answers in ~1.7 s and transcribed the
