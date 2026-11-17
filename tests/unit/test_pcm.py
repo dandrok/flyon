@@ -49,21 +49,32 @@ def test_the_framer_holds_a_partial_frame_instead_of_dropping_it() -> None:
     framer = PcmFramer()
     assert framer.feed(pcm(160, 0.5)) == []  # 320 bytes, half a frame
     assert framer.pending_bytes == 320
-    levels = framer.feed(pcm(160, 0.5))
-    assert levels == pytest.approx([0.5], abs=0.01)
+    frames = framer.feed(pcm(160, 0.5))
+    assert [level for level, _raw in frames] == pytest.approx([0.5], abs=0.01)
     assert framer.pending_bytes == 0
+
+
+def test_the_frame_bytes_come_back_with_the_level() -> None:
+    # a segment cannot be transcribed from a number: the audio must arrive cut the same way
+    framer = PcmFramer()
+    ((level, raw),) = framer.feed(pcm(320, 0.5))
+    assert level == pytest.approx(0.5, abs=0.01)
+    assert len(raw) == FRAME_BYTES
+    assert rms_level(raw) == pytest.approx(level, abs=0.001)
 
 
 def test_three_frames_in_one_read_produce_three_levels() -> None:
     framer = PcmFramer()
-    assert len(framer.feed(pcm(320 * 3, 0.25))) == 3
+    frames = framer.feed(pcm(320 * 3, 0.25))
+    assert len(frames) == 3
+    assert all(len(raw) == FRAME_BYTES for _level, raw in frames)
 
 
-def test_flush_emits_the_short_tail_and_then_nothing() -> None:
+def test_a_tail_shorter_than_a_frame_is_not_emitted() -> None:
+    # under 20 ms of audio is not worth a transcription call
     framer = PcmFramer()
-    framer.feed(pcm(100, 0.5))
-    assert framer.flush() == pytest.approx([0.5], abs=0.01)
-    assert framer.flush() == []
+    assert framer.feed(pcm(100, 0.5)) == []
+    assert framer.pending_bytes == 200
 
 
 def test_the_framer_ignores_an_empty_chunk() -> None:

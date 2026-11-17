@@ -8,6 +8,7 @@ import struct
 import pytest
 
 from flyon.adapters.capture.parec import ParecCapturer, default_streams, monitor_name, parec_argv
+from flyon.domain.pcm import rms_level
 from flyon.domain.segment import MIC, SYSTEM
 from flyon.ports.capturer import CapturerError, Frame
 
@@ -77,6 +78,8 @@ def test_a_pump_turns_bytes_into_frames_on_the_shared_clock() -> None:
     assert [frame.at_ms for frame in frames] == [0, 20, 40]
     assert [round(frame.level, 2) for frame in frames] == [0.0, 0.0, 0.5]
     assert all(frame.stream == MIC for frame in frames)
+    assert all(len(frame.pcm) == 640 for frame in frames)  # 20 ms of s16le mono
+    assert abs(rms_level(frames[-1].pcm) - 0.5) < 0.01
 
 
 def test_two_streams_interleave_through_one_queue() -> None:
@@ -145,4 +148,4 @@ def test_an_unknown_stream_is_refused_and_a_frame_carries_its_stream() -> None:
     with pytest.raises(ValueError, match="unknown stream"):
         ParecCapturer({"speaker_3": "x"})
     with pytest.raises(ValueError, match="unknown stream"):
-        Frame(stream="speaker_3", level=0.0, frame_ms=20, at_ms=0)
+        Frame(stream="speaker_3", level=0.0, frame_ms=20, at_ms=0, pcm=b"")

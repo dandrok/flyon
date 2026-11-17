@@ -190,16 +190,17 @@ class ParecCapturer:
                 chunk = stdout.read(self._read_size)
                 if not chunk:
                     break
-                for level in framer.feed(chunk):
+                for level, raw in framer.feed(chunk):
                     self._queue.put(
-                        Frame(stream=stream, level=level, frame_ms=self._frame_ms, at_ms=at_ms)
+                        Frame(
+                            stream=stream,
+                            level=level,
+                            frame_ms=self._frame_ms,
+                            at_ms=at_ms,
+                            pcm=raw,
+                        )
                     )
                     at_ms += self._frame_ms
-            for level in framer.flush():
-                self._queue.put(
-                    Frame(stream=stream, level=level, frame_ms=self._frame_ms, at_ms=at_ms)
-                )
-                at_ms += self._frame_ms
         except (
             OSError,
             ValueError,

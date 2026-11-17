@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
+from flyon.domain.pcm import bytes_per_frame
 from flyon.domain.segment import STREAMS
 
 
@@ -15,12 +16,17 @@ class CapturerError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class Frame:
-    """One 20 ms of one stream, with how loud it was."""
+    """One 20 ms of one stream: how loud it was, and the audio itself.
+
+    `pcm` is the same window the level was measured over — 20 ms of `s16le` mono — so a segment can
+    be transcribed without asking the capturer for a second copy of the audio.
+    """
 
     stream: str
     level: float
     frame_ms: int
     at_ms: int
+    pcm: bytes
 
     def __post_init__(self) -> None:
         if self.stream not in STREAMS:
@@ -31,6 +37,11 @@ class Frame:
             raise ValueError(f"frame_ms must be positive, got {self.frame_ms}")
         if self.at_ms < 0:
             raise ValueError(f"at_ms must not be negative, got {self.at_ms}")
+        expected = bytes_per_frame(self.frame_ms)
+        if len(self.pcm) != expected:
+            raise ValueError(
+                f"a {self.frame_ms} ms frame is {expected} bytes of s16le mono, got {len(self.pcm)}"
+            )
 
 
 @runtime_checkable
@@ -40,6 +51,11 @@ class Capturer(Protocol):
     Implementations must be interchangeable: `tests/contract/test_capturer.py` runs the same
     criteria against a scripted fake and the real `parec` adapter driven by a fake process.
     """
+
+    @property
+    def streams(self) -> Mapping[str, str]:
+        """The streams this capturer feeds, and where each one comes from."""
+        ...
 
     def start(self) -> None:
         """Begin capturing. Idempotence is *not* promised: a second call raises `CapturerError`."""

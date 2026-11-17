@@ -53,8 +53,9 @@ def rms_level(pcm: bytes) -> float:
 class PcmFramer:
     """Accumulates arbitrary byte chunks and emits one level per complete frame.
 
-    The last partial frame is kept, not dropped: audio arrives in whatever sizes the pipe
-    feels like, and a 300-byte read is half a frame, not a reason to lose it.
+    A partial frame is kept, not dropped: audio arrives in whatever sizes the pipe feels like, and a
+    300-byte read is half a frame, not a reason to lose it. The tail shorter than one frame is never
+    emitted — under 20 ms of audio is not worth a transcription call.
     """
 
     frame_ms: int = FRAME_MS
@@ -70,22 +71,19 @@ class PcmFramer:
     def pending_bytes(self) -> int:
         return len(self._buffer)
 
-    def feed(self, chunk: bytes) -> list[float]:
-        """Add bytes, return the level of every frame this chunk completed."""
+    def feed(self, chunk: bytes) -> list[tuple[float, bytes]]:
+        """Add bytes; return `(level, frame bytes)` for every frame this chunk completed.
+
+        The bytes come back with the level because a segment cannot be transcribed from a number:
+        the caller needs the audio that the number described, cut on exactly the same boundary.
+        """
         if not chunk:
             return []
         self._buffer.extend(chunk)
         size = self.frame_bytes
-        levels: list[float] = []
+        frames: list[tuple[float, bytes]] = []
         while len(self._buffer) >= size:
-            levels.append(rms_level(bytes(self._buffer[:size])))
+            raw = bytes(self._buffer[:size])
+            frames.append((rms_level(raw), raw))
             del self._buffer[:size]
-        return levels
-
-    def flush(self) -> list[float]:
-        """Emit the trailing partial frame as the last, shorter one. Call at end of stream."""
-        if not self._buffer:
-            return []
-        level = rms_level(bytes(self._buffer))
-        self._buffer.clear()
-        return [level]
+        return frames

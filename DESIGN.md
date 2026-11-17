@@ -56,6 +56,12 @@ capture (2 streams)  ->  segmenter (per stream)  ->  transcriber  ->  transcript
 5. **store** appends the resulting `Line` to the session: SQLite for querying, JSONL as the
    append-only artifact.
 
+`app/session.py` is the only module that sees all five. It keeps one segmenter and one audio window
+per stream, cuts the audio to the exact segment the level described, drops empty transcriptions,
+survives an engine failure, and finalises the session on Ctrl-C. Because every mechanism behind it is
+a port, the whole loop runs in a test with a scripted capturer and a scripted engine: no sound card,
+no model, no sleep.
+
 Every arrow is a `Protocol` in `src/flyon/ports/`. The domain package — segments, lines, sessions,
 the transcript itself — touches nothing but the standard library, so the rules that decide where a
 cut happens are testable in microseconds with no audio, no model and no database.

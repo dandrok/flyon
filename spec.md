@@ -165,7 +165,24 @@ extra or capture tool is a **warn**, not a failure: the read commands work witho
   it is listed in the `stt` extra and the dev group instead of arriving by accident through
   `ctranslate2`.
 
-**Still to build:** the session loop that feeds segments to the engine, and blocking `listen`.
+- **AC-36 — the session loop is the only place capture, segmentation, transcription and storage
+  meet**, and it holds these rules: one segmenter per declared stream; the audio handed to the engine
+  is cut to exactly the segment (`end_ms - start_ms` of audio, no trailing silence padded in); an
+  empty transcription is counted, not stored; an engine failure is counted and reported while the
+  recording continues; a frame from a stream the capturer never declared is ignored.
+- **AC-37 — Ctrl-C finalises the session.** Interrupting mid-recording still ends the session row,
+  flushes the open segment of every stream, and returns a summary — a meeting is never abandoned as
+  an open row.
+- **AC-38 — the audio buffer is bounded.** Only the last `max_segment_ms` plus one frame of audio per
+  stream is kept, so memory does not grow with the length of the meeting.
+- **AC-39 — `flyon listen` blocks and reports.** It prints a `mm:ss stream text` line as each segment
+  lands (suppressed by `--quiet`), then one summary line with line count, segment counts and session
+  id, and exits 0. `--source fake --engine fake` runs the whole loop with no microphone and no model.
+- **AC-40 — a missing engine is one clean error.** `flyon listen` with the STT extra absent exits 2
+  before recording starts, naming `uv tool install 'flyon[stt]'`; an unknown `--source` or `--engine`
+  is the same shape of error with the accepted values.
+
+**Still to build:** nothing for M2 except verification against a real model; M3 (notes) is untouched.
 
 - Both streams share a monotonic timeline, so a `mic` segment and a `system` segment can be ordered
   against each other.
@@ -215,6 +232,8 @@ extra or capture tool is a **warn**, not a failure: the read commands work witho
 | AC-30 … AC-31 | `tests/contract/test_capturer.py` |
 | AC-32, AC-35 | `tests/contract/test_transcriber.py` |
 | AC-33 … AC-34 | `tests/unit/test_faster_whisper.py` |
+| AC-36 … AC-38 | `tests/unit/test_session.py` |
+| AC-39 … AC-40 | `tests/unit/test_listen.py` |
 | config load + overrides | `tests/unit/test_config.py` |
 | M2, M3 | written with their slice |
 

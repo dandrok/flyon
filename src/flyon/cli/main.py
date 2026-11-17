@@ -132,6 +132,63 @@ def show(
 
 
 @app.command()
+def listen(
+    ctx: typer.Context,
+    title: Annotated[str, typer.Option("--title", help="Name this session.")] = "",
+    engine: Annotated[
+        str,
+        typer.Option("--engine", help="faster-whisper (default) or fake.", show_default=False),
+    ] = "",
+    source: Annotated[
+        str,
+        typer.Option("--source", help="parec (real audio) or fake (scripted)."),
+    ] = "parec",
+    quiet: Annotated[
+        bool, typer.Option("--quiet", "-q", help="Record without printing each line.")
+    ] = False,
+) -> None:
+    """Record, transcribe as you talk, and save the session. Ctrl-C stops."""
+    from flyon.app.session import SessionRecorder
+    from flyon.app.wiring import open_capturer, open_transcriber
+    from flyon.cli import render
+    from flyon.ports.capturer import CapturerError
+    from flyon.ports.transcriber import TranscriberError
+
+    context = _context(ctx)
+    settings = context.settings
+    try:
+        capturer = open_capturer(source)
+        transcriber = open_transcriber(settings, engine or settings.engine)
+    except (ValueError, CapturerError, TranscriberError) as exc:
+        typer.echo(f"flyon: {exc}", err=True)
+        raise typer.Exit(2) from exc
+
+    target = render.console()
+    recorder = SessionRecorder(
+        capturer=capturer,
+        transcriber=transcriber,
+        store=context.store,
+        title=title,
+        segmenter_config=settings.segmenter.to_domain(),
+        on_line=None if quiet else lambda line: render.print_line(target, line),
+        on_error=lambda message: typer.echo(f"flyon: {message}", err=True),
+    )
+    target.print(
+        f"[dim]recording {', '.join(capturer.streams)} · "
+        f"{transcriber.name}:{transcriber.model} · Ctrl-C stops[/dim]"
+    )
+    summary = recorder.run()
+    duration = summary.session.duration_ms or 0
+    target.print(
+        f"[bold]{len(summary.lines)} lines[/bold] · "
+        f"{summary.segments} segments ({summary.empty_segments} silent, "
+        f"{summary.failed_segments} failed) · {render.duration_text(duration)} · "
+        f"saved as {summary.session.session_id}"
+    )
+    target.print(f"[dim]flyon show {summary.session.session_id[:8]}[/dim]")
+
+
+@app.command()
 def doctor(
     ctx: typer.Context,
     probe: Annotated[

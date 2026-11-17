@@ -41,10 +41,26 @@ uv tool install flyon
 | `flyon sessions` | every session, newest first |
 | `flyon show <id>` | one transcript, `mm:ss` per line, prefixed by stream |
 | `flyon doctor` | environment check: python, data dir, config, store, STT extra, capture tools |
+| `flyon listen` | record, transcribe live, save the session; Ctrl-C stops |
 | `flyon doctor --probe` | records two seconds and reports frames + peak level per stream |
 
 Every read command takes `--json` and prints nothing else in that mode, so a script can consume
 it without stripping human chatter off the front.
+
+## Recording a meeting
+
+```bash
+uv tool install 'flyon[stt]'      # local Whisper; first run downloads the model
+flyon listen --title "weekly sync"
+```
+
+Each segment prints as it is recognised; Ctrl-C stops and finalises the session.
+
+To see the whole loop with no microphone and no model download:
+
+```bash
+flyon listen --source fake --engine fake
+```
 
 ## One worked example
 

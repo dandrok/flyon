@@ -17,6 +17,15 @@ existing database or CLI invocation may stop working; a patch bump never does.
 - A transcription port with a `faster-whisper` adapter (lazy model load, one instance, engine and
   model written into every line) and a scripted `fake` engine for machines without a 1.6 GB model.
 
+### Added — unreleased
+
+- `flyon listen`: records the microphone and the system audio, segments each stream, transcribes every
+  segment as it closes, and saves the session. Ctrl-C finalises instead of discarding.
+- `--source fake` and `--engine fake` run the whole loop with no microphone and no model download, so
+  the pipeline is testable anywhere.
+- The session loop cuts engine input to the exact segment boundaries and keeps only a bounded window
+  of audio per stream, so a long meeting does not grow in memory.
+
 ## [0.1.0] - 2026-11-17
 
 ### Added

@@ -16,7 +16,7 @@ from rich.table import Table
 from flyon.cli.payloads import Row, duration_text
 from flyon.domain.transcript import Line, Session
 
-__all__ = ["Row", "console", "print_lines", "print_sessions"]
+__all__ = ["Row", "console", "print_line", "print_lines", "print_sessions"]
 
 
 def console() -> Console:
@@ -45,6 +45,13 @@ def print_sessions(target: Console, rows: Sequence[Row]) -> None:
     target.print(table)
 
 
+def print_line(target: Console, line: Line) -> None:
+    """One transcript line, as `listen` writes it while you talk."""
+    target.print(
+        f"[dim]{line.timestamp}[/dim] [bold cyan]{line.stream:<6}[/bold cyan] {escape(line.text)}"
+    )
+
+
 def print_lines(target: Console, session: Session, lines: Sequence[Line]) -> None:
     target.print(
         f"[bold]{escape(session.title or 'untitled')}[/bold] "
@@ -56,8 +63,4 @@ def print_lines(target: Console, session: Session, lines: Sequence[Line]) -> Non
         target.print("this session has no transcript lines yet", style="dim")
         return
     for line in lines:
-        target.print(
-            f"[dim]{line.timestamp}[/dim] "
-            f"[bold cyan]{line.stream:<6}[/bold cyan] "
-            f"{escape(line.text)}"
-        )
+        print_line(target, line)

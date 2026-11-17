@@ -13,7 +13,7 @@ import pytest
 
 from flyon.adapters.capture.fake import FakeCapturer
 from flyon.adapters.capture.parec import ParecCapturer
-from flyon.domain.pcm import FRAME_MS
+from flyon.domain.pcm import FRAME_MS, bytes_per_frame, rms_level
 from flyon.domain.segment import MIC, STREAMS, SYSTEM
 from flyon.ports.capturer import Capturer, CapturerError
 
@@ -102,6 +102,21 @@ def test_stop_is_safe_to_call_twice(capturer: Capturer) -> None:
 def test_frames_before_start_is_refused(capturer: Capturer) -> None:
     with pytest.raises(CapturerError):
         list(capturer.frames())
+
+
+def test_each_frame_carries_the_audio_its_level_describes(capturer: Capturer) -> None:
+    capturer.start()
+    frames = list(capturer.frames())
+    capturer.stop()
+    expected = bytes_per_frame(FRAME_MS)
+    for frame in frames:
+        assert len(frame.pcm) == expected
+        assert abs(rms_level(frame.pcm) - frame.level) < 0.01
+
+
+def test_a_capturer_says_which_streams_it_feeds(capturer: Capturer) -> None:
+    assert set(capturer.streams) <= set(STREAMS)
+    assert capturer.streams
 
 
 def test_one_capturer_reaches_both_streams(capturer: Capturer) -> None:
