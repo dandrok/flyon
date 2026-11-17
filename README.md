@@ -9,6 +9,12 @@ computer's audio as **two separate streams**, transcribes each one as you talk, 
 append-only transcript, and writes the minutes on demand. Nothing leaves the machine unless you
 configure a provider.
 
+![flyon in a terminal: recording a 15 s clip, listing the session, reading the transcript back and writing the minutes](https://raw.githubusercontent.com/dandrok/flyon/main/docs/demo.gif)
+
+<sub>A real run of `flyon listen` over a 15 s speech file, then `sessions`, `show` and `summarize`. The
+transcript is the real model; the notes step uses the scripted provider so the recording needs no local
+LLM.</sub>
+
 **Why two streams.** The microphone is you; the default sink's monitor is everyone else. Speaker
 attribution then costs nothing and needs no diarization model — the stream a line came from *is* the
 speaker. It is exact for the two-party case, which is the case a call actually is.
