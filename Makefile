@@ -2,7 +2,7 @@
 # invocation, or the local gate lies about the remote one.
 UV ?= uv
 
-.PHONY: help venv fmt lint types test cov check e2e build clean
+.PHONY: help venv fmt lint types test cov check e2e ci build clean
 
 help:
 	@printf '%s\n' \
@@ -13,6 +13,7 @@ help:
 	  'make test    pytest, slow tests excluded' \
 	  'make cov     pytest with coverage gate' \
 	  'make check   lint + types + test   <- what CI runs' \
+	  'make ci      the whole GitHub job, in a venv without the extras' \
 	  'make e2e     slow tests' \
 	  'make build   wheel + sdist into dist/' \\
 	  'make release VERSION=x.y.z   bump the version and date the changelog'
@@ -38,6 +39,13 @@ cov:
 	$(UV) run pytest --cov --cov-report=term-missing -m "not slow"
 
 check: lint types test
+
+ci:
+	$(UV) sync --locked --python 3.14
+	$(UV) run ruff format --check .
+	$(UV) run ruff check .
+	$(UV) run mypy
+	$(UV) run pytest --cov --cov-fail-under=80 -m "not slow"
 
 e2e:
 	$(UV) run pytest -m slow

@@ -141,11 +141,22 @@ def listen(
     ] = "",
     source: Annotated[
         str,
-        typer.Option("--source", help="parec (real audio) or fake (scripted)."),
+        typer.Option(
+            "--source",
+            help="parec (real audio), fake (scripted), or wav:<file> (16 kHz mono WAV as the mic).",
+        ),
     ] = "parec",
     quiet: Annotated[
         bool, typer.Option("--quiet", "-q", help="Record without printing each line.")
     ] = False,
+    language: Annotated[
+        str,
+        typer.Option(
+            "--language",
+            help="Force a language code (pl, en), for meetings that are not auto-detected.",
+            show_default=False,
+        ),
+    ] = "",
 ) -> None:
     """Record, transcribe as you talk, and save the session. Ctrl-C stops."""
     from flyon.app.session import SessionRecorder
@@ -158,7 +169,7 @@ def listen(
     settings = context.settings
     try:
         capturer = open_capturer(source)
-        transcriber = open_transcriber(settings, engine or settings.engine)
+        transcriber = open_transcriber(settings, engine or settings.engine, language or None)
     except (ValueError, CapturerError, TranscriberError) as exc:
         typer.echo(f"flyon: {exc}", err=True)
         raise typer.Exit(2) from exc
@@ -184,6 +195,15 @@ def listen(
         f"{summary.segments} segments ({summary.empty_segments} silent, "
         f"{summary.failed_segments} failed) · {render.duration_text(duration)} · "
         f"saved as {summary.session.session_id}"
+    )
+    declared = capturer.streams
+    peaks = {
+        stream: level
+        for stream, level in summary.peak_level.items()
+        if declared.get(stream) != "silence"
+    }
+    render.print_levels(
+        target, peaks, threshold=settings.segmenter.voice_threshold, lines=len(summary.lines)
     )
     target.print(f"[dim]flyon show {summary.session.session_id[:8]}[/dim]")
 

@@ -66,6 +66,18 @@ To see the whole loop with no microphone and no model download:
 flyon listen --source fake --engine fake
 ```
 
+To test the real engine against a real voice without any capture device — this is the run to use when
+a microphone is being difficult:
+
+```bash
+espeak-ng -w /tmp/speech.wav "shall we start with the migration"
+ffmpeg -y -i /tmp/speech.wav -ar 16000 -ac 1 -c:a pcm_s16le /tmp/speech16k.wav
+flyon listen --source wav:/tmp/speech16k.wav --title "wav test"
+```
+
+The WAV becomes the microphone; the system stream is silence, because a fixture is one voice. If that
+transcribes and a live recording does not, the pipeline is fine and the microphone is the problem.
+
 ## Writing the minutes
 
 ```bash
@@ -127,7 +139,9 @@ store = "sqlite"         # sqlite (queryable) or jsonl (plain append-only files)
 engine = "faster-whisper"
 model = "small"          # 464 MB, ~1.7 s per segment: keeps up live on CPU.
                          # "large-v3-turbo" (1.6 GB) transcribes better but costs ~7 s per segment
-language = ""            # empty = autodetect
+language = ""            # empty = detect once per session, then stick to it.
+                         # "pl" or "en" pins it for every segment, which is more accurate
+                         # when a meeting is mostly one language with borrowed words
 
 [segmenter]
 voice_threshold = 0.02   # RMS level that counts as speech

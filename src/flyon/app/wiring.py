@@ -41,15 +41,24 @@ def open_store(settings: Settings) -> Store:
 
 
 def open_capturer(source: str = "parec") -> Capturer:
-    """`parec` records the machine; `fake` replays a scripted conversation."""
+    """`parec` records the machine, `fake` replays a script, `wav:<file>` replays a fixture."""
     if source == "fake":
         return FakeCapturer()
     if source == "parec":
         return ParecCapturer(default_streams())
-    raise ValueError(f"unknown capture source {source!r}; expected 'parec' or 'fake'")
+    if source.startswith("wav:"):
+        path = source[len("wav:") :].strip()
+        if not path:
+            raise ValueError("wav: needs a file, e.g. --source wav:speech.wav")
+        from flyon.adapters.capture.wav import WavCapturer
+
+        return WavCapturer(Path(path))
+    raise ValueError(f"unknown capture source {source!r}; expected 'parec', 'fake' or 'wav:<file>'")
 
 
-def open_transcriber(settings: Settings, engine: str | None = None) -> Transcriber:
+def open_transcriber(
+    settings: Settings, engine: str | None = None, language: str | None = None
+) -> Transcriber:
     """`faster-whisper` is the default; `fake` proves the pipeline without a download."""
     name = (engine or settings.engine).strip()
     if name == "fake":
@@ -61,7 +70,7 @@ def open_transcriber(settings: Settings, engine: str | None = None) -> Transcrib
         return FasterWhisperTranscriber(
             settings.model,
             cache_dir=settings.cache_dir,
-            language=settings.language,
+            language=settings.language if language is None else language,
         )
     raise ValueError(f"unknown engine {name!r}; expected 'faster-whisper' or 'fake'")
 

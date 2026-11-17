@@ -210,3 +210,13 @@ def test_frames_are_cut_on_exactly_the_segment_boundaries(store: Store) -> None:
     assert summary.lines[0].start_ms == 0
     assert summary.lines[0].end_ms == 400
     assert len(transcriber.audio[0]) == 400 // FRAME_MS * 640
+
+
+def test_the_summary_carries_the_loudest_frame_of_every_stream(store: Store) -> None:
+    # AC-50: the number that explains an empty transcript, kept for the report
+    script = [(MIC, 0.0)] * 20 + [(MIC, 0.009)] * 20 + [(SYSTEM, 0.6)] * 20 + [(SYSTEM, 0.0)] * 20
+
+    summary = recorder(store, FakeCapturer(script)).run()
+
+    assert summary.peak_level == {MIC: 0.009, SYSTEM: 0.6}
+    assert [line.stream for line in summary.lines] == [SYSTEM]  # the quiet mic produced nothing

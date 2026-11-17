@@ -35,6 +35,7 @@ def test_listen_records_a_scripted_conversation_and_reports_it(tmp_path: Path) -
     assert "recording mic, system" in result.stdout
     assert "hello this is a demo" in result.stdout
     assert "2 lines" in result.stdout
+    assert "loudest frame: mic 0.500 · system 0.600" in result.stdout
 
     listed = listen("--data-dir", str(data_dir), "sessions", "--json")
     payload = json.loads(listed.stdout)

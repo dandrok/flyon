@@ -9,6 +9,13 @@ existing database or CLI invocation may stop working; a patch bump never does.
 
 ### Added
 
+- `flyon listen --language pl`: forces a language for one meeting. Without it the engine now decides
+  the language **once per session** from ~6 s of evidence and sticks to it, instead of guessing from
+  every 1.5 s fragment — which is what turned Polish speech into a Hungarian transcript.
+- `flyon listen --source wav:<file>`: a 16 kHz mono WAV replayed as the microphone, so the whole loop —
+  capture, segmentation, transcription, store — runs on a machine with no working capture device. It
+  exists because a broken microphone and a broken pipeline look identical from the outside; with this
+  they don't. A wrong-format file gets one error naming the `ffmpeg` command that fixes it.
 - `flyon summarize <prefix>`: writes the minutes of a session — summary, decisions, action items and
   open questions — as markdown into `<data-dir>/notes/`, with front-matter naming the session, date,
   duration and streams. Works on an interrupted session too.
@@ -37,6 +44,11 @@ existing database or CLI invocation may stop working; a patch bump never does.
   `docs/VERIFICATION.md` records what a download, a load and a segment actually cost on this machine.
 
 ### Changed
+
+- `flyon listen` now reports the loudest frame it saw on each stream, and when a recording produces no
+  lines it says which of the three reasons it was: nothing arrived (muted or suspended device), audio
+  stayed below `voice_threshold`, or every burst was shorter than `min_segment_ms`. An empty
+  transcript used to leave you with nothing to act on.
 
 - The default model is now `small` (464 MB) instead of `large-v3-turbo`. Live transcription is the
   point and every call costs a full 30 s encoder window, so the big model spent ~7 s on a 5 s segment

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import uuid4
 
@@ -38,6 +38,8 @@ class SessionSummary:
     segments: int
     empty_segments: int
     failed_segments: int
+    peak_level: dict[str, float] = field(default_factory=dict)
+    """The loudest frame seen per stream — the number that explains an empty transcript."""
 
 
 class SessionRecorder:
@@ -72,6 +74,7 @@ class SessionRecorder:
 
         segmenters = {stream: Segmenter(stream, self._config) for stream in self._capturer.streams}
         history: dict[str, deque[Frame]] = {stream: deque() for stream in segmenters}
+        peaks: dict[str, float] = dict.fromkeys(segmenters, 0.0)
         lines: list[Line] = []
         segments = empty = failed = 0
 
@@ -110,6 +113,7 @@ class SessionRecorder:
                     continue
                 window = history[frame.stream]
                 window.append(frame)
+                peaks[frame.stream] = max(peaks[frame.stream], frame.level)
                 self._prune(window, self._config.max_segment_ms + frame.frame_ms)
                 for segment in segmenter.push(frame.level, frame.frame_ms):
                     segments += 1
@@ -136,6 +140,7 @@ class SessionRecorder:
             segments=segments,
             empty_segments=empty,
             failed_segments=failed,
+            peak_level=dict(peaks),
         )
 
     def _audio_for(self, window: deque[Frame], segment: Segment) -> bytes:

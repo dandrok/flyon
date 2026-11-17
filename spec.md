@@ -207,6 +207,29 @@ real model by AC-41.
   downloads" for a model it has no measurement for, because a guessed size is worse than an admitted
   gap. Measured: `tiny` 75 MB, `base` 142 MB, `small` 464 MB, `large-v3-turbo` 1.6 GB.
 
+- **AC-50 — a recording that produced nothing says why.** `flyon listen` reports the loudest frame it
+  saw on every stream, and when a stream produced no lines it names the cause: nothing arrived (muted,
+  suspended bluetooth, wrong device), audio arrived but stayed below `voice_threshold` (lower it or
+  raise the gain), or audio cleared the threshold but every burst was shorter than `min_segment_ms`.
+  "0 lines" on its own is not a diagnosis — it is the one output that leaves the user with nothing to
+  act on.
+
+- **AC-51 — a WAV file is a capture source, so the loop is testable without a device.** `flyon listen
+  --source wav:<file>` replays a 16 kHz mono `s16le` WAV on the microphone stream and declares the
+  system stream silent, because a fixture is one voice; a file in the wrong format is one
+  `CapturerError` naming the exact `ffmpeg` command, and both streams still share the frame timeline.
+  The point is diagnostic: with a real model this transcribes the committed fixture end to end
+  through the CLI with no sound card anywhere, which is the only way to tell "the pipeline is broken"
+  apart from "your microphone is not delivering audio".
+
+- **AC-52 — the language is decided once per session, not per segment.** With `language` empty the
+  adapter votes on what each call detected, weighting by audio length and confidence, and pins the
+  winner once ~6 s has been heard; every later call is decoded as that language. An explicit
+  `language = "pl"` in the config, or `flyon listen --language pl`, skips detection entirely. Whisper
+  decodes one language per call and cannot switch inside one, so the honest claim is one language per
+  session chosen from evidence — measured on a 19 s Polish clip, the transcript came back Polish, where
+  guessing from 1.5 s fragments labelled Polish as Hungarian and transliterated it.
+
 **Still to build:** nothing for M2; M3 (notes) is untouched.
 
 - Both streams share a monotonic timeline, so a `mic` segment and a `system` segment can be ordered
@@ -308,6 +331,9 @@ argued into the default; it has to be measured against a local one.
 | AC-44 | `tests/contract/test_notes.py`, `tests/unit/test_ollama.py` |
 | AC-45 | `tests/unit/test_prompt.py` |
 | AC-46 … AC-49 | `tests/unit/test_notes_app.py`, `tests/unit/test_cli.py` |
+| AC-50 | `tests/unit/test_render.py`, `tests/unit/test_session.py`, `tests/unit/test_listen.py` |
+| AC-51 | `tests/unit/test_wav_capturer.py`, `tests/contract/test_capturer.py`, `tests/e2e/test_real_whisper.py` |
+| AC-52 | `tests/unit/test_faster_whisper.py`, `tests/unit/test_wiring.py` |
 | config load + overrides | `tests/unit/test_config.py` |
 
 ## Out of scope
