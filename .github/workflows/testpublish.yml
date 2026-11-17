@@ -1,0 +1,42 @@
+name: testpublish
+
+# The rehearsal: the same build, the same checks, published to test.pypi.org instead of pypi.org.
+# Manual only, deliberately — a tag must never be able to publish a rehearsal, and a rehearsal must
+# never be able to publish a release.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write # trusted publishing to TestPyPI
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.14
+      - run: uv sync --locked --python 3.14
+
+      - name: never publish a red tree
+        run: uv run pytest -m "not slow" && uv run ruff check . && uv run mypy
+
+      - run: uv build
+
+      - name: the wheel must install and run before it is uploaded
+        run: |
+          uv venv --python 3.14 /tmp/wheelcheck
+          uv pip install --python /tmp/wheelcheck/bin/python dist/*.whl
+          /tmp/wheelcheck/bin/flyon --version
+
+      - name: publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/

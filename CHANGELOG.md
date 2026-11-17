@@ -7,6 +7,10 @@ existing database or CLI invocation may stop working; a patch bump never does.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.0] - 2026-11-17
+
 ### Added
 
 - `flyon config` and `flyon config --init`: the first prints where `config.toml` lives and whether it
@@ -35,7 +39,7 @@ existing database or CLI invocation may stop working; a patch bump never does.
   so "will this work in the meeting" has an answer that is not a PATH lookup.
 - A scripted `fake` capturer, so the pipeline and the contract test run without a sound card.
 - A transcription port with a `faster-whisper` adapter (lazy model load, one instance, engine and
-  model written into every line) and a scripted `fake` engine for machines without a 1.6 GB model.
+  model written into every line) and a scripted `fake` engine for machines that should not download a model.
 - `flyon listen`: records the microphone and the system audio, segments each stream, transcribes every
   segment as it closes, and saves the session. Ctrl-C finalises instead of discarding.
 - `--source fake` and `--engine fake` run the whole loop with no microphone and no model download, so
@@ -45,6 +49,12 @@ existing database or CLI invocation may stop working; a patch bump never does.
 - Verified against a real model: a `slow` test transcribes a committed speech clip with
   `faster-whisper` itself and asserts the words, the engine and the model it was attributed to.
   `docs/VERIFICATION.md` records what a download, a load and a segment actually cost on this machine.
+- `flyon sessions`, `flyon show <id>` and `flyon doctor`, each with `--json` on the read commands.
+- Two-stream segmenter: silence closes a segment, a monologue is cut at 15 s and continues.
+- Session store with two interchangeable adapters, SQLite and append-only JSONL, selected with
+  `store = "sqlite" | "jsonl"` in `config.toml`.
+- Repository gates: ruff, mypy strict on `domain`+`ports`, pytest, a `--json` contract, CI on 3.14
+  and 3.15, and a `make check` that runs exactly what CI runs.
 
 ### Security
 
@@ -80,14 +90,3 @@ existing database or CLI invocation may stop working; a patch bump never does.
 - A tag-driven release pipeline: `make release VERSION=x.y.z` bumps the version and dates the
   changelog, and a `v*` tag runs the tests, verifies the wheel and publishes through PyPI trusted
   publishing (OIDC, no stored token). `docs/RELEASING.md` records when a version is worth shipping.
-
-## [0.1.0] - 2026-11-17
-
-### Added
-
-- `flyon sessions`, `flyon show <id>` and `flyon doctor`, each with `--json` on the read commands.
-- Two-stream segmenter: silence closes a segment, a monologue is cut at 15 s and continues.
-- Session store with two interchangeable adapters, SQLite and append-only JSONL, selected with
-  `store = "sqlite" | "jsonl"` in `config.toml`.
-- Repository gates: ruff, mypy strict on `domain`+`ports`, pytest, a `--json` contract, CI on 3.14
-  and 3.15, and a `make check` that runs exactly what CI runs.
