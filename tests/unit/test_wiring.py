@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from flyon.app import wiring
 from flyon.app.config import load_settings
 from flyon.app.wiring import open_capturer, open_notes_provider, open_transcriber
 
@@ -14,6 +15,16 @@ from flyon.app.wiring import open_capturer, open_notes_provider, open_transcribe
 def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> object:
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "cfg"))
     return load_settings(data_dir=tmp_path / "data", cache_dir=tmp_path / "cache")
+
+
+@pytest.fixture(autouse=True)
+def _no_real_import(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The engine's eager import is the point of `open_transcriber`, not the thing under test here.
+
+    CI installs the package without the `stt` extra, so importing `faster_whisper` for real would
+    make these tests pass locally (extra installed) and fail on the PR — which is what happened.
+    """
+    monkeypatch.setattr(wiring, "_import_faster_whisper", lambda: None)
 
 
 def test_the_language_flag_reaches_the_engine(settings: object) -> None:
