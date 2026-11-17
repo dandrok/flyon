@@ -194,6 +194,15 @@ def test_doctor_reports_every_check_and_succeeds_when_nothing_failed(tmp_path: P
     assert "warn" in result.stdout
 
 
+def test_doctor_names_the_default_model_and_its_download_size(tmp_path: Path) -> None:
+    # AC-42: a warning about a download is only useful with a number in it
+    result = invoke(
+        "--data-dir", str(tmp_path / "data"), "--cache-dir", str(tmp_path / "cache"), "doctor"
+    )
+    assert "small" in result.stdout
+    assert "464 MB" in result.stdout
+
+
 def test_doctor_probe_reports_frames_per_stream(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

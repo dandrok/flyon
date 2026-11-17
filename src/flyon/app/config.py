@@ -14,6 +14,7 @@ from typing import Literal
 from platformdirs import user_cache_dir, user_config_dir, user_data_dir
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from flyon.adapters.stt.faster_whisper import DEFAULT_MODEL
 from flyon.domain.segment import SegmenterConfig
 
 APP_NAME = "flyon"
@@ -62,7 +63,7 @@ class Settings(BaseModel):
 
     store: Literal["sqlite", "jsonl"] = "sqlite"
     engine: str = "faster-whisper"
-    model: str = "large-v3-turbo"
+    model: str = DEFAULT_MODEL
     language: str = ""
     data_dir: Path
     cache_dir: Path
@@ -114,7 +115,7 @@ def load_settings(
         return Settings(
             store=str(raw.get("store", "sqlite")),  # type: ignore[arg-type]
             engine=str(raw.get("engine", "faster-whisper")),
-            model=str(raw.get("model", "large-v3-turbo")),
+            model=str(raw.get("model", DEFAULT_MODEL)),
             language=str(raw.get("language", "")),
             data_dir=resolved_data,
             cache_dir=resolved_cache,
@@ -136,11 +137,11 @@ def write_default_config(settings: Settings, *, force: bool = False) -> Path:
     return settings.config_path
 
 
-DEFAULT_CONFIG_TEXT = """\
+DEFAULT_CONFIG_TEXT = f"""\
 # flyon configuration. Every key below is optional; these are the defaults.
 store = "sqlite"           # sqlite (queryable) or jsonl (plain append-only files)
 engine = "faster-whisper"
-model = "large-v3-turbo"
+model = "{DEFAULT_MODEL}"          # small keeps up live; large-v3-turbo is for reading afterwards
 language = ""              # empty = autodetect
 
 [segmenter]

@@ -26,6 +26,18 @@ existing database or CLI invocation may stop working; a patch bump never does.
   `faster-whisper` itself and asserts the words, the engine and the model it was attributed to.
   `docs/VERIFICATION.md` records what a download, a load and a segment actually cost on this machine.
 
+### Changed
+
+- The default model is now `small` (464 MB) instead of `large-v3-turbo`. Live transcription is the
+  point and every call costs a full 30 s encoder window, so the big model spent ~7 s on a 5 s segment
+  and fell behind a normal turn-taking pace on CPU; `small` answers in ~1.7 s and transcribed the
+  measured fixture exactly. `model = "large-v3-turbo"` stays one config line away for reading a
+  transcript afterwards. Measurements in `docs/VERIFICATION.md`, decision in `docs/adr/005`, and
+  `doctor` now names the real download size for whichever model is configured.
+- Voice activity detection is on in the `faster-whisper` adapter, so non-speech never reaches the
+  decoder. Without it the default model answered `"You"` to two seconds of silence; with it, silence
+  and loud noise both return nothing, and quiet segments are cheaper to skip than to decode.
+
 ### Infrastructure
 
 - A tag-driven release pipeline: `make release VERSION=x.y.z` bumps the version and dates the

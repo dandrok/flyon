@@ -45,7 +45,7 @@ def write_session(store: Store) -> None:
                 end_ms=start_ms + 900,
                 text=text,
                 engine="faster-whisper",
-                model="large-v3-turbo",
+                model="small",
             )
         )
     store.end_session(SESSION_ID, started + timedelta(minutes=12, seconds=31))

@@ -144,7 +144,7 @@ Two decisions came out of that measurement, and one trade was refused:
 | Decision | Cost we accept |
 |---|---|
 | two streams instead of diarization | exact for two-party meetings, says nothing about a third voice in the room |
-| local Whisper by default | a 1.6 GB model download on first run; cloud engines are opt-in extras |
+| local Whisper by default | a 464 MB model download on first run; cloud engines are opt-in extras |
 | SQLite + JSONL, not one of them | two adapters to keep honest — paid for by one contract test file |
 | blocking `flyon listen` | closing the terminal ends the recording; a detached mode is a later flag |
 | a 15 s cap on monologues | a single sentence can be cut mid-clause — the transcript shows it as two lines |

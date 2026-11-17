@@ -6,10 +6,12 @@ place a model is actually downloaded and actually listened to.
 
 `slow`, so `make check` never touches it, and skipped when the `stt` extra is absent. The model is
 cached in the same directory `flyon listen` uses (`platformdirs`' cache dir), so running the tests
-once means the first recording does not download anything.
+once means the first recording does not download anything. It runs against the shipped default
+(`DEFAULT_MODEL`), because a verification test for a model nobody ships verifies nothing:
 
-    make e2e                                        # tiny, 75 MB
-    FLYON_TEST_WHISPER_MODEL=large-v3-turbo make e2e  # the shipped default, 1.6 GB
+    make e2e                                        # the shipped default, 464 MB
+    FLYON_TEST_WHISPER_MODEL=tiny make e2e            # 75 MB, quicker, worse text
+    FLYON_TEST_WHISPER_MODEL=large-v3-turbo make e2e   # the read-it-afterwards model, 1.6 GB
 """
 
 from __future__ import annotations
@@ -20,9 +22,10 @@ import time
 import wave
 from pathlib import Path
 
+import numpy as np
 import pytest
 
-from flyon.adapters.stt.faster_whisper import FasterWhisperTranscriber
+from flyon.adapters.stt.faster_whisper import DEFAULT_MODEL, FasterWhisperTranscriber
 from flyon.app.config import default_cache_dir
 from flyon.domain.pcm import SAMPLE_RATE
 
@@ -35,7 +38,7 @@ pytestmark = [
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "speech"
 SPEECH = FIXTURES / "start-with-the-migration.16k.wav"
-MODEL = os.environ.get("FLYON_TEST_WHISPER_MODEL", "tiny")
+MODEL = os.environ.get("FLYON_TEST_WHISPER_MODEL", DEFAULT_MODEL)
 
 
 def pcm_of(path: Path, *, limit_ms: int | None = None) -> bytes:
@@ -94,10 +97,24 @@ def test_a_segment_length_clip_still_produces_text() -> None:
 
 
 def test_digital_silence_produces_no_text() -> None:
-    """AC-41: a silent segment must not invent a sentence, or the transcript fills with ghosts."""
+    """AC-41: a silent segment must not invent a sentence, or the transcript fills with ghosts.
+
+    This is the one that caught a real hallucination: without `vad_filter`, `small` answers `"You"`
+    to digital silence. With it, every model measured returns nothing.
+    """
     silence = bytes(SAMPLE_RATE * 2 * 2)  # two seconds of s16le zeros
 
     result = transcriber().transcribe(silence)
 
     assert result.text == ""
     assert result.model == MODEL
+
+
+def test_loud_non_speech_produces_no_text() -> None:
+    """AC-41: noise loud enough to clear the voice gate must not become a line either."""
+    rng = np.random.default_rng(7)
+    samples = (rng.uniform(-1, 1, SAMPLE_RATE * 2) * 0.05 * 32_767).astype("<i2")
+
+    result = transcriber().transcribe(samples.tobytes())
+
+    assert result.text == ""

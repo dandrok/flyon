@@ -21,6 +21,7 @@ from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
 
+from flyon.adapters.stt.faster_whisper import MODEL_DOWNLOAD_SIZES
 from flyon.app.config import Settings, is_writable
 from flyon.domain.segment import STREAMS
 from flyon.ports.capturer import Capturer, CapturerError
@@ -196,7 +197,9 @@ def _check_capture() -> Check:
 
 
 def _check_models(settings: Settings) -> Check:
-    hint = f"no model cached yet — first run downloads {settings.model} (~1.6 GB)"
+    size = MODEL_DOWNLOAD_SIZES.get(settings.model)
+    download = f"~{size}" if size else "size unknown until it downloads"
+    hint = f"no model cached yet — first run downloads {settings.model} ({download})"
     cached = settings.cache_dir.is_dir() and any(settings.cache_dir.iterdir())
     if cached:
         return Check("models", "ok", f"{settings.cache_dir} has cached models")
