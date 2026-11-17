@@ -14,7 +14,8 @@ help:
 	  'make cov     pytest with coverage gate' \
 	  'make check   lint + types + test   <- what CI runs' \
 	  'make e2e     slow tests' \
-	  'make build   wheel + sdist into dist/'
+	  'make build   wheel + sdist into dist/' \\
+	  'make release VERSION=x.y.z   bump the version and date the changelog'
 
 venv:
 	$(UV) sync --python 3.14
@@ -40,6 +41,14 @@ check: lint types test
 
 e2e:
 	$(UV) run pytest -m slow
+
+release:
+	@test -n "$(VERSION)" || { echo "usage: make release VERSION=0.2.0"; exit 2; }
+	$(UV) run python scripts/release.py $(VERSION)
+
+dry-publish:
+	$(UV) build
+	$(UV) publish --publish-url https://test.pypi.org/legacy/ dist/*
 
 build:
 	$(UV) build

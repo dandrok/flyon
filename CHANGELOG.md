@@ -16,15 +16,18 @@ existing database or CLI invocation may stop working; a patch bump never does.
 - A scripted `fake` capturer, so the pipeline and the contract test run without a sound card.
 - A transcription port with a `faster-whisper` adapter (lazy model load, one instance, engine and
   model written into every line) and a scripted `fake` engine for machines without a 1.6 GB model.
-
-### Added — unreleased
-
 - `flyon listen`: records the microphone and the system audio, segments each stream, transcribes every
   segment as it closes, and saves the session. Ctrl-C finalises instead of discarding.
 - `--source fake` and `--engine fake` run the whole loop with no microphone and no model download, so
   the pipeline is testable anywhere.
 - The session loop cuts engine input to the exact segment boundaries and keeps only a bounded window
   of audio per stream, so a long meeting does not grow in memory.
+
+### Infrastructure
+
+- A tag-driven release pipeline: `make release VERSION=x.y.z` bumps the version and dates the
+  changelog, and a `v*` tag runs the tests, verifies the wheel and publishes through PyPI trusted
+  publishing (OIDC, no stored token). `docs/RELEASING.md` records when a version is worth shipping.
 
 ## [0.1.0] - 2026-11-17
 
