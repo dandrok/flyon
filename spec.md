@@ -150,7 +150,22 @@ extra or capture tool is a **warn**, not a failure: the read commands work witho
   criteria against a scripted fake and the real `parec` adapter driven by a fake process; `stop()` is
   idempotent, a second `start()` raises, and a missing binary is a `CapturerError`, not a traceback.
 
-**Still to build:** the transcriber port and `faster-whisper` adapter, then blocking `listen`.
+**Built (engine half, wired next):**
+
+- **AC-32 — one transcriber contract, two engines.** `tests/contract/test_transcriber.py` runs a
+  scripted engine and the `faster-whisper` adapter (driven by a stub model) through the same checks:
+  text comes back stripped, every result names its engine and model, silence and empty audio produce
+  an empty transcription rather than an exception.
+- **AC-33 — the model loads once, lazily, and failures say which model.** The adapter builds a single
+  `WhisperModel` on first use; a missing `flyon[stt]` extra raises one `TranscriberError` naming the
+  install command; a download or CTranslate2 failure names the model that failed.
+- **AC-34 — audio conversion is exact.** `s16le` becomes float32 in −1.0 … 1.0 (16384 → 0.5), an odd
+  trailing byte is ignored, and empty bytes convert to an empty array.
+- **AC-35 — numpy is a declared dependency, not an inherited one.** It is imported by the adapter, so
+  it is listed in the `stt` extra and the dev group instead of arriving by accident through
+  `ctranslate2`.
+
+**Still to build:** the session loop that feeds segments to the engine, and blocking `listen`.
 
 - Both streams share a monotonic timeline, so a `mic` segment and a `system` segment can be ordered
   against each other.
@@ -198,6 +213,8 @@ extra or capture tool is a **warn**, not a failure: the read commands work witho
 | AC-28 … AC-29 | `tests/unit/test_pcm.py` |
 | AC-31 (parec side), AC-27 | `tests/unit/test_parec.py`, `tests/unit/test_cli.py` |
 | AC-30 … AC-31 | `tests/contract/test_capturer.py` |
+| AC-32, AC-35 | `tests/contract/test_transcriber.py` |
+| AC-33 … AC-34 | `tests/unit/test_faster_whisper.py` |
 | config load + overrides | `tests/unit/test_config.py` |
 | M2, M3 | written with their slice |
 

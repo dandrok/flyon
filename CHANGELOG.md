@@ -14,6 +14,8 @@ existing database or CLI invocation may stop working; a patch bump never does.
 - `flyon doctor --probe [--seconds N]` records briefly and reports frames and peak level per stream,
   so "will this work in the meeting" has an answer that is not a PATH lookup.
 - A scripted `fake` capturer, so the pipeline and the contract test run without a sound card.
+- A transcription port with a `faster-whisper` adapter (lazy model load, one instance, engine and
+  model written into every line) and a scripted `fake` engine for machines without a 1.6 GB model.
 
 ## [0.1.0] - 2026-11-17
 

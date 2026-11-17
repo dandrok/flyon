@@ -51,7 +51,9 @@ capture (2 streams)  ->  segmenter (per stream)  ->  transcriber  ->  transcript
 2. **segment** turns levels into `Segment(stream, start_ms, end_ms)` — silence closes a segment, a
    long monologue is force-cut at 15 s and continues as the next segment;
 3. **transcribe** takes a segment plus its audio slice and returns text (local Whisper by default);
-4. **store** appends the resulting `Line` to the session: SQLite for querying, JSONL as the
+4. **transcribe** turns a segment's PCM into text and stamps it with engine and model — the two
+   facts that make a transcript attributable a year later;
+5. **store** appends the resulting `Line` to the session: SQLite for querying, JSONL as the
    append-only artifact.
 
 Every arrow is a `Protocol` in `src/flyon/ports/`. The domain package — segments, lines, sessions,
@@ -77,7 +79,7 @@ Groq engine or a JSONL store must not require editing the module that computes s
 | Port | Contract | Adapters today |
 |---|---|---|
 | `capturer.Capturer` | start/stop the streams, yield `Frame(stream, level, at_ms)` | `parec`, `fake` |
-| `transcriber.Transcriber` | `transcribe(frames, hint) -> text` | next slice |
+| `transcriber.Transcriber` | `transcribe(pcm) -> Transcription(text, engine, model)` | `faster-whisper`, `fake` |
 | `store.Store` | sessions and append-only lines | `sqlite`, `jsonl` |
 
 Which store is live is configuration (`store = "sqlite" | "jsonl"`), resolved in one place,

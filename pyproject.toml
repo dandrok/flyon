@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-stt = ["faster-whisper>=1.2,<2"]
+stt = ["faster-whisper>=1.2,<2", "numpy>=2.2,<3"]
 vad = ["silero-vad-lite>=0.4,<1"]
 notes = ["google-genai>=3.3,<4"]
 all = ["flyon[stt,vad,notes]"]
@@ -42,6 +42,7 @@ Issues = "https://github.com/dandrok/flyon/issues"
 [dependency-groups]
 dev = [
   "mypy>=2.4,<3",
+  "numpy>=2.2,<3",
   "pytest>=9.2,<10",
   "pytest-cov>=7.1,<8",
   "ruff>=0.17,<1",

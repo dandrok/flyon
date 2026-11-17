@@ -535,6 +535,7 @@ dependencies = [
 all = [
     { name = "faster-whisper" },
     { name = "google-genai" },
+    { name = "numpy" },
     { name = "silero-vad-lite" },
 ]
 notes = [
@@ -542,6 +543,7 @@ notes = [
 ]
 stt = [
     { name = "faster-whisper" },
+    { name = "numpy" },
 ]
 vad = [
     { name = "silero-vad-lite" },
@@ -550,6 +552,7 @@ vad = [
 [package.dev-dependencies]
 dev = [
     { name = "mypy" },
+    { name = "numpy" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
@@ -560,6 +563,7 @@ requires-dist = [
     { name = "faster-whisper", marker = "extra == 'stt'", specifier = ">=1.2,<2" },
     { name = "flyon", extras = ["stt", "vad", "notes"], marker = "extra == 'all'" },
     { name = "google-genai", marker = "extra == 'notes'", specifier = ">=3.3,<4" },
+    { name = "numpy", marker = "extra == 'stt'", specifier = ">=2.2,<3" },
     { name = "platformdirs", specifier = ">=4.3,<5" },
     { name = "pydantic", specifier = ">=2.14,<3" },
     { name = "rich", specifier = ">=15,<16" },
@@ -571,6 +575,7 @@ provides-extras = ["stt", "vad", "notes", "all"]
 [package.metadata.requires-dev]
 dev = [
     { name = "mypy", specifier = ">=2.4,<3" },
+    { name = "numpy", specifier = ">=2.2,<3" },
     { name = "pytest", specifier = ">=9.2,<10" },
     { name = "pytest-cov", specifier = ">=7.1,<8" },
     { name = "ruff", specifier = ">=0.17,<1" },
