@@ -20,6 +20,7 @@ from rich.table import Table
 
 from flyon.app.config import Settings, is_writable
 from flyon.domain.segment import STREAMS
+from flyon.ports.store import StoreError
 
 Status = Literal["ok", "warn", "fail"]
 STYLE: dict[Status, str] = {"ok": "green", "warn": "yellow", "fail": "red"}
@@ -93,16 +94,18 @@ def _check_config(settings: Settings) -> Check:
 
 
 def _check_store(settings: Settings) -> Check:
-    path = settings.database_path()
+    from flyon.app.wiring import open_store, store_location
+
+    path = store_location(settings)
     try:
-        connection = sqlite3.connect(path)
+        store = open_store(settings)
         try:
-            version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+            sessions = len(store.list_sessions(limit=1))
         finally:
-            connection.close()
-    except sqlite3.Error as exc:
+            store.close()
+    except (OSError, sqlite3.Error, StoreError) as exc:
         return Check("store", "fail", f"{path}: {exc}")
-    return Check("store", "ok", f"{path} (schema v{version})")
+    return Check("store", "ok", f"{settings.store} · {path} · {sessions} session(s) seen")
 
 
 def _check_module(name: str, module: str, hint: str) -> Check:

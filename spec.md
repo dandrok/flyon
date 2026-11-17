@@ -102,6 +102,10 @@ and lines — this is what makes the store a store and not a cache.
 
 **AC-17 — an unknown session is a `None`, not an exception**; `lines()` of it is empty.
 
+**AC-26 — the backend is configuration.** `store = "sqlite" | "jsonl"` in `config.toml` selects the
+adapter, `sqlite` is the default, an unknown value is a configuration error, and both backends read
+back through the same CLI command — the seam is tested end to end, not asserted in a comment.
+
 ### CLI
 
 **AC-18 — `flyon --version` prints `flyon <version>` and exits 0.**
@@ -125,7 +129,8 @@ extra or capture tool is a **warn**, not a failure: the read commands work witho
 **AC-24 — `--data-dir` isolates everything.** Pointing it at a fresh directory yields an empty
 `flyon sessions --json` and creates the directory, never touching the default path.
 
-**AC-25 — a broken `config.toml` exits 2 with the file path in the message**, and no traceback.
+**AC-25 — a broken `config.toml` exits 2 with the file path in the message**, and no traceback. A
+`--data-dir` that cannot hold a database is the same shape of error: exit 2, one line on stderr.
 
 ## M2 — live capture and local STT
 
@@ -161,7 +166,10 @@ Contract only; the slice that builds it refines these into tests.
   `domain/` and `ports/`.
 - **AC-GATES — `make check` runs the identical commands CI runs**; a green local run and a red PR
   mean an environment difference, never a different command.
-- **AC-STARTUP — `flyon --version` returns in under 300 ms** on this machine; measured, not assumed.
+- **AC-STARTUP — startup is measured, not assumed.** `flyon --version` returns in under 300 ms and
+  `flyon sessions --json` in under 500 ms on this machine (measured 2026-11-17: 185 ms and 404 ms).
+  The criterion exists so a new import is a decision, not an accident: `pydantic` costs ~150 ms and is
+  worth it for config validation, `rich` costs ~40 ms and is kept off the `--json` path entirely.
 - **AC-STATE — no recording or transcript is ever written inside the repository**; the default paths
   come from `platformdirs`, and `--data-dir` is the only way they move.
 

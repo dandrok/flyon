@@ -11,6 +11,7 @@ import pytest
 from typer.testing import CliRunner
 
 from flyon import __version__
+from flyon.adapters.store.jsonl import JsonlStore
 from flyon.adapters.store.sqlite import SqliteStore
 from flyon.cli.main import app
 from flyon.domain.segment import MIC, SYSTEM
@@ -153,6 +154,30 @@ def test_show_with_an_ambiguous_prefix_lists_the_candidates(data_dir: Path) -> N
     assert "2 sessions match" in result.stderr
 
 
+def test_the_configured_store_backend_is_the_one_the_cli_reads(tmp_path: Path) -> None:
+    # AC-26: the backend is configuration, not an import buried in the CLI
+    data_dir = tmp_path / "data"
+    store = JsonlStore(data_dir)
+    store.create_session(
+        Session(
+            session_id=SESSION_ID,
+            started_at=datetime(2026, 11, 17, 10, 4, tzinfo=UTC),
+            title="weekly sync",
+        )
+    )
+    store.append_line(
+        Line(session_id=SESSION_ID, stream=MIC, start_ms=0, end_ms=500, text="line 0")
+    )
+    store.close()
+    config = tmp_path / "config.toml"
+    config.write_text('store = "jsonl"\n', encoding="utf-8")
+    result = invoke("--config", str(config), "--data-dir", str(data_dir), "sessions", "--json")
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["sessions"][0]["id"] == SESSION_ID
+    assert payload["sessions"][0]["lines"] == 1
+
+
 def test_the_bare_command_with_no_sessions_mentions_the_next_step(data_dir: Path) -> None:
     result = invoke("--data-dir", str(data_dir))
     assert "doctor" in result.stdout
@@ -167,6 +192,25 @@ def test_doctor_reports_every_check_and_succeeds_when_nothing_failed(tmp_path: P
     for name in ("python", "data dir", "config", "store", "stt extra", "capture", "models"):
         assert name in result.stdout
     assert "warn" in result.stdout
+
+
+def test_a_data_dir_that_cannot_be_a_database_exits_two_without_a_traceback(tmp_path: Path) -> None:
+    blocked = tmp_path / "blocked"
+    blocked.write_text("not a directory", encoding="utf-8")
+    result = invoke("--data-dir", str(blocked), "sessions")
+    assert result.exit_code == 2
+    assert "cannot open the store" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+def test_doctor_exits_one_when_a_directory_is_unusable(tmp_path: Path) -> None:
+    # AC-23: a real failure is a red row and a non-zero exit, not a warning
+    blocked = tmp_path / "blocked"
+    blocked.write_text("not a directory", encoding="utf-8")
+    result = invoke("--data-dir", str(tmp_path / "data"), "--cache-dir", str(blocked), "doctor")
+    assert result.exit_code == 1
+    assert "FAIL" in result.stdout
+    assert "cache dir" in result.stdout
 
 
 def test_a_broken_config_exits_two_without_a_traceback(tmp_path: Path) -> None:

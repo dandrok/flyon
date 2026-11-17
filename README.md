@@ -46,24 +46,35 @@ it without stripping human chatter off the front.
 
 ## One worked example
 
-```bash
-$ flyon
-no sessions yet — run `flyon listen` once capture lands, or `flyon doctor` to check the machine
+A machine that has recorded nothing answers like this — two lines, and the next thing to type:
 
-$ flyon sessions --json
-{}
+```console
+$ flyon
+no sessions yet on this machine
+flyon doctor   check the microphone, the model and the store
+```
+
+With one 12½-minute meeting in the store (the same shape `flyon listen` will write once capture
+lands):
+
+```console
+$ flyon sessions
+ID        STARTED           DURATION  LINES  TITLE
+6f4c1a2b  2026-11-17 10:04     12:31      4  weekly sync
 
 $ flyon show 6f4c
-flyon: no session matches '6f4c'
+weekly sync 6f4c1a2b · 2026-11-17 10:04 · 4 lines
+00:00 mic    morning — shall we start with the migration?
+00:01 system yes, I pushed the schema change last night
+00:03 mic    then the backfill is the only thing left
+00:06 system I can take that, it is maybe two days
+
+$ flyon sessions --json
+{"sessions": [{"id": "6f4c1a2b9d8e", "started_at": "2026-11-17T10:04:00+00:00", "ended_at": "2026-11-17T10:16:31+00:00", "duration_ms": 751000, "title": "weekly sync", "lines": 4}]}
 ```
 
-Once a session exists (the store tests create one), the same commands answer:
-
-```bash
-$ flyon sessions
-ID        STARTED            DURATION  LINES  TITLE
-6f4c1a2b  2026-11-17 10:04       12:31     84  weekly sync
-```
+The `mic` / `system` prefix is the whole point: the speakers are separated by which stream the words
+came from, with no diarization model involved.
 
 ## Where files go
 
@@ -78,6 +89,7 @@ Nothing assumes an Obsidian vault exists. The state directory is `platformdirs`'
 ## Configuration
 
 ```toml
+store = "sqlite"         # sqlite (queryable) or jsonl (plain append-only files)
 engine = "faster-whisper"
 model = "large-v3-turbo"
 language = ""            # empty = autodetect

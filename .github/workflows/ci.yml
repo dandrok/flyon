@@ -15,7 +15,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.14", "3.15"]
+        include:
+          - python: "3.14"
+            experimental: false
+          # 3.15 is a release candidate today: it is here so the breakage shows up in a PR,
+          # not the week it ships. A red 3.15 job does not block the merge.
+          - python: "3.15"
+            experimental: true
+    continue-on-error: ${{ matrix.experimental }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -31,6 +38,6 @@ jobs:
         if: matrix.python == '3.14'
         run: |
           uv build
-          python3 -m venv /tmp/wheelcheck
-          /tmp/wheelcheck/bin/pip install --quiet dist/*.whl
+          uv venv --python 3.14 /tmp/wheelcheck
+          uv pip install --python /tmp/wheelcheck/bin/python dist/*.whl
           /tmp/wheelcheck/bin/flyon --version

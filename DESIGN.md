@@ -13,6 +13,7 @@ the machinery those rules protect.
 - [Ports](#ports)
 - [The segmenter](#the-segmenter)
 - [The store](#the-store)
+- [Startup, measured](#startup-measured)
 - [Trade-offs we accepted](#trade-offs-we-accepted)
 
 ## The problem
@@ -76,6 +77,10 @@ Groq engine or a JSONL store must not require editing the module that computes s
 | `transcriber.Transcriber` | `transcribe(frames, hint) -> text` | next slice |
 | `store.Store` | sessions and append-only lines | `sqlite`, `jsonl` |
 
+Which store is live is configuration (`store = "sqlite" | "jsonl"`), resolved in one place,
+`app/wiring.py`. The CLI never imports an adapter, which is what makes the second backend a setting
+rather than a fork.
+
 `tests/contract/test_store.py` is parametrized over **both** store adapters, so the port is a
 tested seam rather than a comment. A port with one adapter and no contract test is a claim.
 
@@ -102,6 +107,26 @@ keeps the same data as plain append-only files — the artifact you can read wit
 another tool, or diff, and the answer if a future SQLite change ever needs an escape hatch.
 
 Both implement the same port so the CLI does not care which one is behind it.
+
+## Startup, measured
+
+Measured on 2026-11-17, this machine, Python 3.14.7, `.venv/bin/flyon` directly:
+
+| Invocation | Wall clock | What it pays for |
+|---|---|---|
+| `flyon --version` | **185 ms** | interpreter (~29 ms) + typer (~66 ms) + `dataclasses` (~19 ms) |
+| `flyon sessions --json` | **404 ms** | the above + `pydantic` (~150 ms) + sqlite + `platformdirs` |
+
+Two decisions came out of that measurement, and one trade was refused:
+
+- `rich` is imported only on the human-output path (`cli/render.py`), never for `--json`
+  (`cli/payloads.py` is pure). That is the difference between 404 ms and ~450 ms, and it keeps the
+  JSON contract independent of a terminal library.
+- `--version` returns before the config, the store or `rich` are imported, because those imports live
+  inside the command bodies.
+- **Refused:** dropping `pydantic` to buy back 150 ms. A typo in `silence_ms` would become a strange
+  transcript three meetings later instead of a field name on stderr. The number is under the threshold
+  where a typed command feels slow, so nothing else needs fixing.
 
 ## Trade-offs we accepted
 

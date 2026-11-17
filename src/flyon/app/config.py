@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import tomllib
 from pathlib import Path
+from typing import Literal
 
 from platformdirs import user_cache_dir, user_config_dir, user_data_dir
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -59,6 +60,7 @@ class Settings(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    store: Literal["sqlite", "jsonl"] = "sqlite"
     engine: str = "faster-whisper"
     model: str = "large-v3-turbo"
     language: str = ""
@@ -110,6 +112,7 @@ def load_settings(
 
     try:
         return Settings(
+            store=str(raw.get("store", "sqlite")),  # type: ignore[arg-type]
             engine=str(raw.get("engine", "faster-whisper")),
             model=str(raw.get("model", "large-v3-turbo")),
             language=str(raw.get("language", "")),
@@ -135,6 +138,7 @@ def write_default_config(settings: Settings, *, force: bool = False) -> Path:
 
 DEFAULT_CONFIG_TEXT = """\
 # flyon configuration. Every key below is optional; these are the defaults.
+store = "sqlite"           # sqlite (queryable) or jsonl (plain append-only files)
 engine = "faster-whisper"
 model = "large-v3-turbo"
 language = ""              # empty = autodetect

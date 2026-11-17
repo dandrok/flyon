@@ -49,6 +49,23 @@ def test_flags_win_over_the_platformdirs_defaults(tmp_path: Path) -> None:
     assert settings.cache_dir == tmp_path / "cache"
 
 
+def test_the_store_backend_is_a_setting_with_sqlite_as_the_default(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "cfg"))
+    assert load_settings().store == "sqlite"
+    config = tmp_path / "config.toml"
+    config.write_text('store = "jsonl"\n', encoding="utf-8")
+    assert load_settings(config=config).store == "jsonl"
+
+
+def test_an_unknown_store_backend_is_rejected(tmp_path: Path) -> None:
+    config = tmp_path / "config.toml"
+    config.write_text('store = "postgres"\n', encoding="utf-8")
+    with pytest.raises(SettingsError, match="store"):
+        load_settings(config=config)
+
+
 def test_the_cli_flag_beats_the_config_file(tmp_path: Path) -> None:
     config = tmp_path / "config.toml"
     config.write_text(f'data_dir = "{tmp_path / "from-config"}"\n', encoding="utf-8")

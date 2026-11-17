@@ -8,6 +8,7 @@ difference between a command that feels instant and one that does not.
 from __future__ import annotations
 
 import json
+import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
@@ -74,15 +75,20 @@ def root(
     ] = None,
 ) -> None:
     """A fly on the wall: transcribe meetings locally."""
-    from flyon.adapters.store.sqlite import SqliteStore
     from flyon.app.config import SettingsError, load_settings
+    from flyon.app.wiring import open_store
 
     try:
         settings = load_settings(config=config, data_dir=data_dir, cache_dir=cache_dir)
     except SettingsError as exc:
         typer.echo(f"flyon: {exc}", err=True)
         raise typer.Exit(2) from exc
-    ctx.obj = Context(settings=settings, store=SqliteStore(settings.database_path()))
+    try:
+        store = open_store(settings)
+    except (OSError, sqlite3.Error) as exc:
+        typer.echo(f"flyon: cannot open the store: {exc}", err=True)
+        raise typer.Exit(2) from exc
+    ctx.obj = Context(settings=settings, store=store)
     if ctx.invoked_subcommand is None:
         _status(ctx.obj)
 
