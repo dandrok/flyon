@@ -1,156 +1,134 @@
 # flyon
 
-A fly on the wall: a local-first meeting transcriber. It records the microphone and the system
-audio as two separate streams, transcribes each one live, keeps an append-only transcript, and
-writes structured notes on demand. Audio stays on your machine unless you configure a cloud engine.
+![ci](https://github.com/dandrok/flyon/actions/workflows/ci.yml/badge.svg)
+![license](https://img.shields.io/badge/license-MIT-blue)
+![python](https://img.shields.io/badge/python-3.14%2B-blue)
+
+A fly on the wall: a local-first meeting transcriber for Linux. It records your microphone and your
+computer's audio as **two separate streams**, transcribes each one as you talk, keeps an
+append-only transcript, and writes the minutes on demand. Nothing leaves the machine unless you
+configure a provider.
+
+**Why two streams.** The microphone is you; the default sink's monitor is everyone else. Speaker
+attribution then costs nothing and needs no diarization model — the stream a line came from *is* the
+speaker. It is exact for the two-party case, which is the case a call actually is.
+
+**Why live.** The transcript is the point while the call is happening, so the default model is chosen
+to keep up rather than to win a benchmark: see [Models and speed](#models-and-speed).
 
 ## Contents
 
-- [Status](#status)
+- [Requirements](#requirements)
 - [Install](#install)
-- [The commands that exist today](#the-commands-that-exist-today)
-- [One worked example](#one-worked-example)
-- [Where files go](#where-files-go)
+- [Quick start](#quick-start)
+- [Commands](#commands)
 - [Configuration](#configuration)
+- [Models and speed](#models-and-speed)
+- [Notes](#notes)
+- [What it does not do](#what-it-does-not-do)
+- [Where files go](#where-files-go)
+- [Troubleshooting](#troubleshooting)
 - [Development](#development)
 - [Docs](#docs)
+- [License](#license)
 
-## Status
+## Requirements
 
-`0.1.0` — transcript core, capture and notes. Two-stream segmentation, the session store, the read
-commands, real audio capture from the microphone plus the default sink's monitor, live transcription
-with a local Whisper model, and minutes on demand through a local provider. See
-[`spec.md`](spec.md) for the milestone map and the acceptance criteria behind every command.
+| | |
+|---|---|
+| OS | Linux with PipeWire or PulseAudio (`parec` or `pw-record` on `PATH`) |
+| Python | 3.14 or newer — `uv` installs one if you have none |
+| Disk | ~500 MB for the default model; 1.6 GB if you take `large-v3-turbo` |
+| For notes | a local [Ollama](https://ollama.com) daemon, or any OpenAI-compatible chat server you point it at |
 
 ## Install
 
 ```bash
-# from a checkout, today
-uv sync --python 3.14
-uv run flyon --version
-
-# once the capture slice ships
-uv tool install flyon
+uv tool install --python 3.14 'flyon[stt] @ git+https://github.com/dandrok/flyon'
+flyon doctor
 ```
 
-## The commands that exist today
+`flyon doctor` is the first command to run: it checks Python, the data and cache directories, the
+config, the store, the `stt` extra, the capture tools and the cached models, and it exits non-zero
+only when something is actually broken. `--probe` also records a few seconds and reports frames and
+peak level per stream — talk while it runs.
 
-| Command | What it does |
-|---|---|
-| `flyon` | last session in four lines, or what to do first |
-| `flyon sessions` | every session, newest first |
-| `flyon show <id>` | one transcript, `mm:ss` per line, prefixed by stream |
-| `flyon doctor` | environment check: python, data dir, config, store, STT extra, capture tools |
-| `flyon listen` | record, transcribe live, save the session; Ctrl-C stops |
-| `flyon summarize <id>` | write the minutes: summary, decisions, action items, open questions |
-| `flyon doctor --probe` | records two seconds and reports frames + peak level per stream |
+Once `0.1.0` is on PyPI the line becomes `uv tool install 'flyon[stt]'`. Until then, install from git.
 
-Every read command takes `--json` and prints nothing else in that mode, so a script can consume
-it without stripping human chatter off the front.
+From a checkout, if you want to work on it: `uv tool install --python 3.14 --editable "$PWD[stt]"`.
 
-## Recording a meeting
+## Quick start
+
+Start recording **during** a call, not before it — a Bluetooth headset only delivers audio while the
+call is up:
 
 ```bash
-uv tool install 'flyon[stt]'      # local Whisper; first run downloads `small` (464 MB)
-flyon listen --title "weekly sync"
+flyon listen --title "weekly sync"     # talk; Ctrl-C stops and finalises
+flyon show 6f4c                        # read the transcript back
+flyon summarize 6f4c                   # write the minutes, once a provider is configured
 ```
 
-Each segment prints as it is recognised; Ctrl-C stops and finalises the session. Live output is the
-design point, which is why the default model is `small` and not the bigger, slower one — the numbers
-are in [`docs/VERIFICATION.md`](docs/VERIFICATION.md), the reasoning in
-[`docs/adr/005`](docs/adr/005-small-model-on-cpu.md).
-
-To see the whole loop with no microphone and no model download:
-
-```bash
-flyon listen --source fake --engine fake
-```
-
-To test the real engine against a real voice without any capture device — this is the run to use when
-a microphone is being difficult:
-
-```bash
-espeak-ng -w /tmp/speech.wav "shall we start with the migration"
-ffmpeg -y -i /tmp/speech.wav -ar 16000 -ac 1 -c:a pcm_s16le /tmp/speech16k.wav
-flyon listen --source wav:/tmp/speech16k.wav --title "wav test"
-```
-
-The WAV becomes the microphone; the system stream is silence, because a fixture is one voice. If that
-transcribes and a live recording does not, the pipeline is fine and the microphone is the problem.
-
-## Writing the minutes
-
-```bash
-flyon summarize 6f4c                  # the configured provider, ollama by default
-flyon summarize 6f4c --provider fake  # the whole path, no model, nothing sent anywhere
-```
-
-The note lands in `~/.local/share/flyon/notes/<session>.md`: front-matter (session, date, duration,
-streams) and four sections — summary, decisions, action items, open questions. With
-`[output] extra_copy` set you get an identical copy there as well, which is how a note reaches the
-vault. A failed provider call leaves no note behind at all.
-
-## One worked example
-
-A machine that has recorded nothing answers like this — two lines, and the next thing to type:
+Each segment prints as it is recognised:
 
 ```console
-$ flyon
-no sessions yet on this machine
-flyon doctor   check the microphone, the model and the store
-```
-
-With one 12½-minute meeting in the store (the same shape `flyon listen` will write once capture
-lands):
-
-```console
-$ flyon sessions
-ID        STARTED           DURATION  LINES  TITLE
-6f4c1a2b  2026-11-17 10:04     12:31      4  weekly sync
-
-$ flyon show 6f4c
-weekly sync 6f4c1a2b · 2026-11-17 10:04 · 4 lines
-00:00 mic    morning — shall we start with the migration?
+$ flyon listen --title "weekly sync"
+recording mic, system · faster-whisper:small · Ctrl-C stops
+00:00 mic    shall we start with the migration
 00:01 system yes, I pushed the schema change last night
 00:03 mic    then the backfill is the only thing left
 00:06 system I can take that, it is maybe two days
-
-$ flyon sessions --json
-{"sessions": [{"id": "6f4c1a2b9d8e", "started_at": "2026-11-17T10:04:00+00:00", "ended_at": "2026-11-17T10:16:31+00:00", "duration_ms": 751000, "title": "weekly sync", "lines": 4}]}
+^C4 lines · 4 segments (0 silent, 0 failed) · 00:07 · saved as 6f4c1a2b9d8e
+loudest frame: mic 0.208 · system 0.188 · voice_threshold 0.02
 ```
 
-The `mic` / `system` prefix is the whole point: the speakers are separated by which stream the words
-came from, with no diarization model involved.
+That last line is the diagnostic: it says what the recording actually heard, and when a stream
+produced nothing it names the reason — muted, suspended, below `voice_threshold`, or bursts shorter
+than `min_segment_ms`.
 
-## Where files go
+## Commands
 
-Nothing assumes an Obsidian vault exists. The state directory is `platformdirs`' user data dir.
+| Command | What it does |
+|---|---|
+| `flyon` | the last session in four lines, or what to do first |
+| `flyon listen` | record both streams, transcribe live, save the session; Ctrl-C stops |
+| `flyon sessions` | every session, newest first |
+| `flyon show <id>` | one transcript, `mm:ss` per line, prefixed by stream |
+| `flyon summarize <id>` | write the minutes: summary, decisions, action items, open questions |
+| `flyon doctor` | environment check; `--probe [--seconds N]` records briefly and reports levels |
 
-| Path | Contents | Override |
+Useful flags:
+
+| Flag | On | Meaning |
 |---|---|---|
-| `~/.local/share/flyon/` | SQLite database, JSONL transcripts | `--data-dir` |
-| `~/.cache/flyon/` | downloaded Whisper models | `--cache-dir` |
-| `~/.config/flyon/config.toml` | engine, model, thresholds | `--config` |
+| `--title "weekly sync"` | `listen` | name the session |
+| `--language pl` | `listen` | pin the language for this meeting (otherwise decided once per session) |
+| `--quiet` | `listen` | record without printing each line |
+| `--source fake \| wav:<file>` | `listen` | replay a script, or a WAV, instead of the microphone |
+| `--engine fake` | `listen` | scripted text instead of a model — the whole loop with no download |
+| `--provider ollama \| fake` | `summarize` | override the configured notes provider |
+| `--json` | `sessions`, `show` | print only the payload, so a script can consume it |
 
 ## Configuration
+
+Every key is optional; the file is `~/.config/flyon/config.toml` and there is no command that writes
+it yet — create it by hand.
 
 ```toml
 store = "sqlite"         # sqlite (queryable) or jsonl (plain append-only files)
 engine = "faster-whisper"
-model = "small"          # 464 MB, ~1.7 s per segment: keeps up live on CPU.
-                         # "large-v3-turbo" (1.6 GB) transcribes better but costs ~7 s per segment
-language = ""            # empty = detect once per session, then stick to it.
-                         # "pl" or "en" pins it for every segment, which is more accurate
-                         # when a meeting is mostly one language with borrowed words
+model = "small"          # 464 MB, ~1.7 s per segment: keeps up live on CPU
+language = ""            # empty = decide once per session, then stick to it
+                         # "pl" or "en" pins every segment, which is more accurate when a
+                         # meeting is mostly one language with borrowed words
 
 [segmenter]
-voice_threshold = 0.02   # RMS level that counts as speech
+voice_threshold = 0.02   # RMS level that counts as speech — lower it for quiet headsets
 silence_ms = 800         # this much silence closes a segment
-max_segment_ms = 15000   # a monologue is force-cut here and continues
+max_segment_ms = 15000   # a monologue is cut here and continues as the next segment
 min_segment_ms = 250     # shorter than this is dropped as noise
 
 [output]
-extra_copy = ""          # e.g. "~/Documents/obsidian-root/Meetings"
+extra_copy = ""          # e.g. "~/Documents/obsidian-root/Meetings" — the note, copied
 
 [notes]
 provider = ""            # "ollama" writes the minutes locally; empty = no note, no network call
@@ -158,22 +136,99 @@ model = "llama3.2"
 host = "http://localhost:11434"
 ```
 
+## Models and speed
+
+Every `transcribe()` call pays a full 30 s encoder window, and the pipeline makes one call per
+segment — so the cost is per segment, not per minute of meeting. Measured on a Ryzen 7 8845HS (16
+threads, `int8`), median of five runs on a 5 s clip:
+
+| Model | Download | Per 5 s segment | Keeps up live? |
+|---|---|---|---|
+| `tiny` | 75 MB | 0.39 s | yes, with word errors |
+| `base` | 142 MB | 0.59 s | yes, some errors |
+| **`small`** (default) | 464 MB | 1.70 s | yes, exact on clean speech |
+| `large-v3-turbo` | 1.6 GB | 6.71 s | no — it falls behind turn-taking on CPU |
+
+`large-v3-turbo` is the better model and stays one config line away for reading a transcript after the
+call. The full tables, the per-model word accuracy and the reasoning are in
+[`docs/VERIFICATION.md`](docs/VERIFICATION.md) and [`docs/adr/005`](docs/adr/005-small-model-on-cpu.md).
+
+## Notes
+
+`flyon summarize` sends the transcript to the configured provider and writes markdown into
+`~/.local/share/flyon/notes/<session>.md`: front-matter (session, date, duration, streams) plus
+summary, decisions, action items and open questions. With `[output] extra_copy` set you get an
+identical copy there too — that is how a note reaches an Obsidian vault.
+
+An unconfigured install cannot make a network call: `provider` is empty by default and `summarize`
+exits 2 naming the setting. `--provider fake` proves the whole path offline. A failed provider call
+leaves no note behind — the provider is asked before anything is written, and the write goes through
+a temporary file.
+
+## What it does not do
+
+- **No diarization.** Two parties by stream; a third voice in the room is attributed to whichever
+  device heard it.
+- **One language per session.** Whisper decodes one language per call, so a sentence that is half
+  Polish and half English comes back in the session's language, English words included.
+- **Not a meeting bot.** It records this machine's audio: to capture the other side you have to be in
+  the call on this machine.
+- **No cloud sync, no GUI, no summarising service.** Transcripts are files; notes need a local
+  provider.
+- **Linux for capture** — the capture adapters are PipeWire/PulseAudio. The store, the notes and the
+  model run anywhere Python does.
+
+## Where files go
+
+| Path | Contents | Override |
+|---|---|---|
+| `~/.local/share/flyon/` | SQLite database or JSONL transcripts, and `notes/` | `--data-dir` |
+| `~/.cache/flyon/` | downloaded Whisper models | `--cache-dir` |
+| `~/.config/flyon/config.toml` | engine, model, thresholds, providers | `--config` |
+
+Nothing is written inside a repository, ever.
+
+## Troubleshooting
+
+**Zero lines, and it saved a session.** Read the `loudest frame:` line. `0.000` means nothing arrived
+— a suspended Bluetooth device, a muted microphone, or the wrong default source. A value under
+`voice_threshold` means the level; lower the threshold or raise the input gain. The
+[Bluetooth notes](docs/VERIFICATION.md#a-real-call--2026-11-17) are worth reading before a call.
+
+**Microphone works in `doctor --probe` but not in `listen`.** Start `listen` during the call: a
+headset's microphone only comes up while the call holds it.
+
+**The pipeline itself.** Prove it without a device:
+
+```bash
+flyon listen --source fake --engine fake                    # scripted, no model
+flyon listen --source wav:$HOME/git/flyon/tests/fixtures/speech/start-with-the-migration.16k.wav
+```
+
+The second one runs a real 16 kHz mono WAV through capture, segmentation, the model and the store. If
+that transcribes and a live recording does not, the pipeline is fine and the device is the problem.
+
 ## Development
 
 ```bash
 make venv     # .venv on 3.14
-make check    # lint + types + tests, the same commands CI runs
-make e2e      # slow tests; the real-model one needs `uv sync --extra stt` (75 MB model)
+make check    # lint + types + tests
+make ci       # the whole GitHub job, in a venv without the extras
+make e2e      # slow tests; the real-model one needs `uv sync --extra stt`
 ```
 
 ## Docs
 
 - [`spec.md`](spec.md) — what each milestone must do, as testable criteria
 - [`DESIGN.md`](DESIGN.md) — the pipeline, the ports, and the trade-offs behind them
-- [`AGENTS.md`](AGENTS.md) — how an agent should work in this repo
-- [`docs/RELEASING.md`](docs/RELEASING.md) — when a version is worth publishing, and how
 - [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — what has actually been measured on real hardware
 - [`docs/adr/`](docs/adr/) — one decision per file
+- [`docs/RELEASING.md`](docs/RELEASING.md) — when a version is worth publishing, and how
+- [`AGENTS.md`](AGENTS.md) / [`CONTRIBUTING.md`](CONTRIBUTING.md) — how work reaches `main`
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).
 
 ---
 
