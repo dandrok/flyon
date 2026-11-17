@@ -50,11 +50,14 @@ it without stripping human chatter off the front.
 ## Recording a meeting
 
 ```bash
-uv tool install 'flyon[stt]'      # local Whisper; first run downloads the model
+uv tool install 'flyon[stt]'      # local Whisper; first run downloads `small` (464 MB)
 flyon listen --title "weekly sync"
 ```
 
-Each segment prints as it is recognised; Ctrl-C stops and finalises the session.
+Each segment prints as it is recognised; Ctrl-C stops and finalises the session. Live output is the
+design point, which is why the default model is `small` and not the bigger, slower one — the numbers
+are in [`docs/VERIFICATION.md`](docs/VERIFICATION.md), the reasoning in
+[`docs/adr/005`](docs/adr/005-small-model-on-cpu.md).
 
 To see the whole loop with no microphone and no model download:
 
@@ -109,7 +112,8 @@ Nothing assumes an Obsidian vault exists. The state directory is `platformdirs`'
 ```toml
 store = "sqlite"         # sqlite (queryable) or jsonl (plain append-only files)
 engine = "faster-whisper"
-model = "large-v3-turbo"
+model = "small"          # 464 MB, ~1.7 s per segment: keeps up live on CPU.
+                         # "large-v3-turbo" (1.6 GB) transcribes better but costs ~7 s per segment
 language = ""            # empty = autodetect
 
 [segmenter]

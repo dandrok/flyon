@@ -11,6 +11,7 @@ the product half.
 - [M1 — transcript core](#m1--transcript-core)
 - [M2 — live capture and local STT](#m2--live-capture-and-local-stt)
 - [M3 — notes](#m3--notes)
+- [Later — cloud engines](#later--cloud-engines-not-scheduled)
 - [Cross-cutting criteria](#cross-cutting-criteria)
 - [Acceptance-criteria to test map](#acceptance-criteria-to-test-map)
 - [Out of scope](#out-of-scope)
@@ -34,11 +35,14 @@ that builds them.
 
 ## Decisions closed by this spec
 
-The three questions the engineering note left open, decided 2026-11-17:
+The three questions the engineering note left open, decided 2026-11-17 (the model, again, on the
+evidence in `docs/VERIFICATION.md`):
 
-1. **Default model on first run: `large-v3-turbo`.** One 1.6 GB download, good text from the first
-   meeting, no "come back later and upgrade" step. `doctor` warns before the download, so nobody is
-   surprised by it mid-meeting.
+1. **Default model on first run: `small`.** Live transcription is the point, and the engine costs one
+   30 s encoder window per *segment*: `large-v3-turbo` spends ~7 s on a 5 s segment and falls behind a
+   normal turn-taking pace on CPU, while `small` answers in ~1.7 s with exact text on the measured
+   fixture. 464 MB once, `doctor` names the size before the download. `large-v3-turbo` stays one
+   config line away for reading a transcript afterwards — `docs/adr/005`.
 2. **`flyon listen` blocks.** Live output in the terminal; Ctrl-C stops and finalises the session.
    A detached mode is a later flag (`--detach`), not a second code path in v0.1.
 3. **The segmenter cuts on silence *and* caps a monologue at 15 s.** A monologue becomes a sequence
@@ -185,13 +189,23 @@ real model by AC-41.
 
 - **AC-41 — a real model transcribes real speech.** `tests/e2e/test_real_whisper.py` is the one test
   that downloads a model and listens to it: a committed 2.3 s speech fixture goes through the real
-  adapter, and the result must contain the words *start* and *migration* and name the engine and the
+  adapter, and the result must contain the words *start* and *migration*, and name the engine and the
   model. A 1.5 s clip of the same fixture — segment length, which is what this pipeline actually
   produces — must still return text, and two seconds of digital silence must return none, because a
-  silent segment that invents a sentence poisons the transcript. The test is `slow` (never in
-  `make check`), skips when the `stt` extra is absent, and caches the model in the same directory
-  `listen` uses, so running the tests once means the first meeting downloads nothing. Measured cost
-  (download, load, realtime factor) is recorded in `docs/VERIFICATION.md`.
+  silent segment that invents a sentence poisons the transcript. Two seconds of noise loud enough to
+  clear `voice_threshold` must return none as well: that is what `vad_filter` in the adapter is for,
+  and this criterion is why it is on. The test is `slow` (never in `make check`), skips when the `stt`
+  extra is absent, runs the shipped default model, and caches it in the same directory `listen` uses,
+  so running the tests once means the first meeting downloads nothing. Measured cost (download, load,
+  realtime factor) is recorded in `docs/VERIFICATION.md`.
+
+- **AC-42 — the default model is `small`, and everything that names it agrees.** `DEFAULT_MODEL` in the
+  `faster-whisper` adapter is the single source: the `Settings` default, the template that
+  `write_default_config` writes, and `doctor`'s download warning all read it, so no file drifts to
+  another model — a test writes the default config and loads it back to prove it. `doctor` prints the
+  measured download size for the configured model (`small` → 464 MB) and says "size unknown until it
+  downloads" for a model it has no measurement for, because a guessed size is worse than an admitted
+  gap. Measured: `tiny` 75 MB, `base` 142 MB, `small` 464 MB, `large-v3-turbo` 1.6 GB.
 
 **Still to build:** nothing for M2; M3 (notes) is untouched.
 
@@ -214,6 +228,26 @@ real model by AC-41.
 - Nothing is uploaded without an engine explicitly configured: the default configuration cannot make
   a network call.
 - A failed provider call leaves no partial note behind.
+
+## Later — cloud engines (not scheduled)
+
+Decided 2026-11-17: v0.1 stays local. Live transcription is the goal, and a cloud engine is the
+obvious escape hatch when local latency or accuracy is not enough — it is one more `Transcriber`
+adapter, not a redesign, because the port is already a synchronous call per segment. Recorded here so
+the pricing work is not thrown away. Nothing below is scheduled and none of it is verified by us.
+
+| Engine | Call | Price | Limits that matter |
+|---|---|---|---|
+| DeepSeek ASR | `POST https://api.deepseek.com/v1/tools/asr`, multipart WAV/Ogg | $0.116/hr list, $0.058 promotional | ≤120 s and ≤8 MiB per request, no streaming, 21 languages auto-detected (Polish included), content checks can refuse a segment |
+| Groq `whisper-large-v3-turbo` | the OpenAI-compatible `audio/transcriptions` endpoint | $0.04/hr | ~216x realtime, word error rate 12%; bills a 10 s minimum per request, so 5 s segments cost double |
+| Groq `whisper-large-v3` | same endpoint | $0.111/hr | ~189x realtime, word error rate 10.3% |
+
+Our segments are capped at 15 s, so DeepSeek's 120 s ceiling is not a constraint, and an hour of
+meeting costs about 12 cents there. What has to exist before any of them lands: an ADR for "audio
+leaves the machine" — what is sent, what is retained, what happens to a refused or failed segment —
+the same contract-test line the other engines get, and a measured latency and accuracy row in
+`docs/VERIFICATION.md` on the same fixtures. A closed model with no published weights cannot be
+argued into the default; it has to be measured against a local one.
 
 ## Cross-cutting criteria
 
@@ -246,6 +280,7 @@ real model by AC-41.
 | AC-36 … AC-38 | `tests/unit/test_session.py` |
 | AC-39 … AC-40 | `tests/unit/test_listen.py` |
 | AC-41 | `tests/e2e/test_real_whisper.py` |
+| AC-42 | `tests/unit/test_config.py`, `tests/unit/test_cli.py` |
 | config load + overrides | `tests/unit/test_config.py` |
 | M2, M3 | written with their slice |
 
@@ -253,6 +288,7 @@ real model by AC-41.
 
 Identical to the engineering note's non-goals: no TUI, no diarization, no torch, no async rewrite, no
 GUI or web dashboard, no cloud sync, no recording of third parties in fixtures — synthetic audio only.
+Cloud *engines* are the separate, unscheduled item above; cloud *sync* of transcripts stays out.
 
 ## Open questions
 

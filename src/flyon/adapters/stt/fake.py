@@ -1,7 +1,7 @@
 """A scripted transcriber: deterministic text, no model, no download.
 
 Two jobs: the contract test needs an engine that never varies, and `flyon listen --engine fake`
-lets the whole pipeline run on a machine where a 1.6 GB download is not welcome (CI, a fresh box).
+lets the whole pipeline run on a machine where a model download is not welcome (CI, a fresh box).
 """
 
 from __future__ import annotations

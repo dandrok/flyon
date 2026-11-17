@@ -17,7 +17,19 @@ from typing import Any
 from flyon.domain.pcm import SAMPLE_RATE, SAMPLE_WIDTH
 from flyon.ports.transcriber import TranscriberError, Transcription
 
-DEFAULT_MODEL = "large-v3-turbo"
+# `small`, not the most accurate model: a call pays a whole 30 s encoder window and the pipeline
+# makes one call per segment. `large-v3-turbo` spends ~7 s on a 5 s segment, so it cannot keep up
+# with a normal turn-taking pace on CPU. `small` answers in ~1.7 s, exact on clean speech.
+# Numbers: docs/VERIFICATION.md. Decision: docs/adr/005.
+DEFAULT_MODEL = "small"
+
+# Measured downloads, so `doctor` warns with a real number or admits it does not know one.
+MODEL_DOWNLOAD_SIZES = {
+    "tiny": "75 MB",
+    "base": "142 MB",
+    "small": "464 MB",
+    "large-v3-turbo": "1.6 GB",
+}
 INSTALL_HINT = "uv tool install 'flyon[stt]'"
 
 ModelFactory = Callable[[], "Any"]
@@ -50,7 +62,13 @@ def to_float32(pcm: bytes, sample_rate: int = SAMPLE_RATE) -> Any:
 
 
 class FasterWhisperTranscriber:
-    """Satisfies `Transcriber`. One model instance, loaded once, reused across segments."""
+    """Satisfies `Transcriber`. One model instance, loaded once, reused across segments.
+
+    `vad_filter` is on by default: the Silero VAD inside faster-whisper drops non-speech before the
+    decoder runs, which is the difference between a silent segment and the word `"You"` invented out
+    of it (measured: `docs/VERIFICATION.md`). It also costs less than decoding silence, so it pays
+    for itself on the quiet stretches of a meeting.
+    """
 
     name = "faster-whisper"
 
@@ -63,6 +81,7 @@ class FasterWhisperTranscriber:
         beam_size: int = 5,
         compute_type: str = "int8",
         device: str = "cpu",
+        vad_filter: bool = True,
         model_factory: ModelFactory | None = None,
     ) -> None:
         self._model_name = model
@@ -71,6 +90,7 @@ class FasterWhisperTranscriber:
         self._beam_size = beam_size
         self._compute_type = compute_type
         self._device = device
+        self._vad_filter = vad_filter
         self._factory = model_factory
         self._instance: Any | None = None
         self._lock = threading.Lock()
@@ -92,7 +112,7 @@ class FasterWhisperTranscriber:
                 audio,
                 language=self._language,
                 beam_size=self._beam_size,
-                vad_filter=False,
+                vad_filter=self._vad_filter,
                 condition_on_previous_text=False,
             )
             text = " ".join(getattr(segment, "text", "").strip() for segment in segments).strip()

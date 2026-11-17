@@ -20,7 +20,7 @@ def test_defaults_come_from_platformdirs_and_the_decided_values(
     assert settings.data_dir == tmp_path / "xdg-data" / "flyon"
     assert settings.cache_dir == tmp_path / "xdg-cache" / "flyon"
     assert settings.config_path == tmp_path / "xdg-config" / "flyon" / "config.toml"
-    assert settings.model == "large-v3-turbo"
+    assert settings.model == "small"
     assert settings.engine == "faster-whisper"
     assert settings.config_found is False
     assert settings.segmenter.max_segment_ms == 15_000
@@ -29,18 +29,32 @@ def test_defaults_come_from_platformdirs_and_the_decided_values(
 def test_a_config_file_overrides_the_defaults(tmp_path: Path) -> None:
     config = tmp_path / "config.toml"
     config.write_text(
-        'model = "small"\nlanguage = "pl"\n\n'
+        'model = "large-v3-turbo"\nlanguage = "pl"\n\n'
         "[segmenter]\nsilence_ms = 1200\nmax_segment_ms = 20000\n\n"
         '[output]\nextra_copy = "~/notes/meetings"\n',
         encoding="utf-8",
     )
     settings = load_settings(config=config, data_dir=tmp_path / "d", cache_dir=tmp_path / "c")
     assert settings.config_found is True
-    assert settings.model == "small"
+    assert settings.model == "large-v3-turbo"
     assert settings.language == "pl"
     assert settings.segmenter.silence_ms == 1200
     assert settings.segmenter.to_domain().max_segment_ms == 20_000
     assert settings.output.extra_copy_path() == Path("~/notes/meetings").expanduser()
+
+
+def test_the_written_config_round_trips_to_the_default_model(tmp_path: Path) -> None:
+    # AC-42: the file a user reads and the value the code uses cannot disagree
+    from flyon.adapters.stt.faster_whisper import DEFAULT_MODEL
+    from flyon.app.config import Settings, write_default_config
+
+    target = tmp_path / "config.toml"
+    settings = Settings(data_dir=tmp_path / "d", cache_dir=tmp_path / "c", config_path=target)
+    write_default_config(settings)
+
+    reloaded = load_settings(config=target, data_dir=tmp_path / "d", cache_dir=tmp_path / "c")
+
+    assert reloaded.model == settings.model == DEFAULT_MODEL
 
 
 def test_flags_win_over_the_platformdirs_defaults(tmp_path: Path) -> None:

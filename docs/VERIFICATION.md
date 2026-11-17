@@ -10,8 +10,8 @@ before quoting them.
 - [Capture — AC-27](#capture-ac-27)
 - [Transcription — AC-41](#transcription-ac-41)
 - [Cost is per segment, not per minute](#cost-is-per-segment-not-per-minute)
-- [What this means for the default model](#what-this-means-for-the-default-model)
-- [Hallucination on near-silence](#hallucination-on-near-silence)
+- [What this decided](#what-this-decided)
+- [Hallucination on non-speech — and the fix](#hallucination-on-non-speech--and-the-fix)
 - [Still not verified](#still-not-verified)
 - [How to reproduce](#how-to-reproduce)
 
@@ -100,33 +100,48 @@ worse than that: one 22 s clip took 120 s there (5.5x *slower* than realtime).
 Beam size is not the lever: `beam_size=1` saved 10–20% across the models, because the encoder window
 dominates, not the decoder.
 
-## What this means for the default model
+## What this decided
 
-`spec.md` and `ADR 002` ship `large-v3-turbo` by default. The measurements say that is right for text
-quality — it transcribes a clean paragraph exactly where `tiny` makes four errors — and risky for
-liveness on a CPU-only machine: it is the only one of the four that cannot keep up with a normal
-turn-taking pace.
+`spec.md` and `ADR 002` shipped `large-v3-turbo` by default, on the reasoning that accuracy is what
+matters. The measurement says that reasoning misses the shape of the pipeline: the engine is called
+once per segment, so a model that spends 7 s per call cannot keep up live — and live is the use case.
 
-Nothing was changed on the strength of this: the default is a product decision, recorded as an open
-question rather than quietly edited here. The options, in order of how little they disturb the design:
+Decided (ADR 005): **`small` is the default**, `large-v3-turbo` stays one config line away for reading
+a transcript afterwards or for a GPU. `small` transcribes the measured paragraph exactly at ~1.7 s per
+segment, 464 MB, ~3x realtime headroom at a turn-taking pace.
 
-1. **Keep `large-v3-turbo`, accept the lag.** The transcript trails the meeting; nothing is lost,
-   because the session is written as it goes. Fine if "read it afterwards" is the use case, poor if
-   the live text is the point.
-2. **Default to `small` on CPU.** Exact text in these measurements, 464 MB, ~2.6 s per segment, 3x
-   headroom. It is the model the numbers point at.
-3. **Detect by device.** GPU → `large-v3-turbo`, CPU → `small`. More config, better answer.
+Two things this deliberately does not claim:
 
-## Hallucination on near-silence
+- **The evidence is one synthetic paragraph.** Clean espeak speech, one voice, 22 s. A real
+  two-speaker call over a Bluetooth microphone will be worse for every model here; the *relative*
+  speeds will hold, the absolute word accuracy will not.
+- **Cloud engines are not ruled out.** DeepSeek ASR (`$0.058–0.116/hr`, ≤120 s per request, no
+  streaming) and Groq (`$0.04/hr` for `whisper-large-v3-turbo`, measures a 10 s minimum per request)
+  are recorded in `spec.md` as a later slice. Neither is measured here, so neither is a
+  recommendation: a closed model with no published weights has to be measured against a local one
+  before it can become a default.
 
-Two seconds of digital silence transcribes to `""` — the criterion AC-41 asserts. Two seconds of 1%
-amplitude dither noise transcribes to `"You"`, which is Whisper inventing a word rather than hearing
-one.
+## Hallucination on non-speech — and the fix
 
-The segmenter's RMS gate is what keeps this out of the transcript: silence below `voice_threshold`
-never becomes a segment, so it never reaches the engine. The residual exposure is a segment that
-clears the threshold without speech in it — a cough, a door, a keyboard. Those can produce a phantom
-line. Not fixed here; noted because a phantom line in a transcript is worse than a missing one.
+Whisper invents a word when it has nothing to hear, and whether it does is model-specific: `tiny`
+returned `""` for two seconds of digital silence, `small` returned `"You"`. That is exactly why the
+silence check is a test and not an assumption — it failed on the first run with the new default.
+
+Fix: `vad_filter=True` in the adapter (Silero VAD ships inside faster-whisper). Non-speech is dropped
+before the decoder runs:
+
+| input, 2 s | `small`, `vad_filter=False` | `small`, `vad_filter=True` |
+|---|---|---|
+| digital silence | `"You"` | `""` |
+| noise at 5% amplitude (clears `voice_threshold`) | not measured | `""` |
+| the 2.3 s speech fixture | exact | exact |
+
+Skipping silence is also cheaper than decoding it: 77 s versus 36 s for the same 2 s of zeros on the
+1-vCPU box.
+
+Why it matters even though the segmenter already gates on level: the gate only catches *quiet*
+non-speech. A keyboard, a door, a cough loud enough to clear `voice_threshold` used to reach the
+decoder and could come back as a line. Now it reaches the VAD first.
 
 ## Still not verified
 
