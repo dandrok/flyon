@@ -221,13 +221,36 @@ real model by AC-41.
 
 ## M3 — notes
 
-- `flyon summarize <session>` sends the transcript to the configured provider and writes a markdown
-  note to the state dir; with `output.extra_copy` set, an identical copy is written there.
-- The note has front-matter (`session`, `date`, `duration`, `streams`) and sections: summary,
-  decisions, action items, open questions.
-- Nothing is uploaded without an engine explicitly configured: the default configuration cannot make
-  a network call.
-- A failed provider call leaves no partial note behind.
+**Built** for a local provider; a cloud provider is the unscheduled slice below. Ollama is verified
+against a stub transport, not yet against a daemon on the host — that is the one row missing from
+`docs/VERIFICATION.md`.
+
+- **AC-43 — a note has four parts and refuses half of one.** `Note(summary, decisions, actions,
+  questions)` requires a stripped, non-empty summary and rejects a blank bullet; empty sections are
+  allowed, because plenty of meetings decide nothing. A provider answer that is prose, or JSON with no
+  summary, is a `NotesError` — not a note with an empty summary.
+- **AC-44 — every provider satisfies one port.** `tests/contract/test_notes.py` runs a scripted
+  provider and the Ollama adapter (driven by a stub transport) through the same criteria: it names
+  itself, it answers with a `Note`, an empty transcript raises `NotesError` without a call, and every
+  failure surfaces as `NotesError` so the CLI has one path to report. A second backend costs one line
+  in that parametrization.
+- **AC-45 — the prompt is the contract.** One set of instructions and one JSON schema
+  (`app/prompt.py`) serve every provider; the transcript reaches the model one line per utterance with
+  its `mm:ss` offset and its stream. Reading an answer tolerates the key names models reach for
+  (`actions` for `action_items`), drops blank bullets, and turns anything unusable into `NotesError`.
+- **AC-46 — `flyon summarize <prefix>` writes the minutes.** The note lands in `<data-dir>/notes/` as
+  markdown with front-matter (`session`, `date`, `duration`, `streams`, `lines`) and four sections —
+  summary, decisions, action items, open questions — with `- none` where a section is empty. An open
+  (interrupted) session can be summarised too; its duration says `unknown`.
+- **AC-47 — a failed provider call leaves no note behind.** The provider is called before anything is
+  rendered or written, and the write goes through a temporary file in the target directory, so there
+  is no state in which a half-written note looks finished.
+- **AC-48 — the default install cannot send a transcript anywhere.** `[notes] provider` is empty by
+  default; `summarize` then exits 2 naming the setting, without creating a notes directory. An unknown
+  provider name is the same shape of error, an unreachable daemon is exit 1 with the `ollama serve`
+  hint, and `--provider fake` proves the whole path offline.
+- **AC-49 — `output.extra_copy` gets identical bytes.** With a copy directory configured, the vault
+  copy is the same file content, written by the same call — not a second render that could differ.
 
 ## Later — cloud engines (not scheduled)
 
@@ -281,8 +304,11 @@ argued into the default; it has to be measured against a local one.
 | AC-39 … AC-40 | `tests/unit/test_listen.py` |
 | AC-41 | `tests/e2e/test_real_whisper.py` |
 | AC-42 | `tests/unit/test_config.py`, `tests/unit/test_cli.py` |
+| AC-43 | `tests/unit/test_note.py` |
+| AC-44 | `tests/contract/test_notes.py`, `tests/unit/test_ollama.py` |
+| AC-45 | `tests/unit/test_prompt.py` |
+| AC-46 … AC-49 | `tests/unit/test_notes_app.py`, `tests/unit/test_cli.py` |
 | config load + overrides | `tests/unit/test_config.py` |
-| M2, M3 | written with their slice |
 
 ## Out of scope
 

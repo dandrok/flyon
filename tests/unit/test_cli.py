@@ -285,5 +285,64 @@ def test_a_named_but_missing_config_exits_two(tmp_path: Path) -> None:
 def test_help_lists_every_command() -> None:
     result = invoke("--help")
     assert result.exit_code == 0
-    for command in ("sessions", "show", "doctor"):
+    for command in ("sessions", "show", "summarize", "doctor"):
         assert command in result.stdout
+
+
+def test_summarize_writes_a_note_and_says_where(data_dir: Path) -> None:
+    # AC-46
+    seed(data_dir)
+    result = invoke("--data-dir", str(data_dir), "summarize", SESSION_ID[:4], "--provider", "fake")
+
+    assert result.exit_code == 0
+    note = data_dir / "notes" / f"{SESSION_ID}.md"
+    assert note.is_file()
+    text = note.read_text(encoding="utf-8")
+    assert "## Summary" in text and "## Open questions" in text
+    assert str(note) in result.stdout
+
+
+def test_summarize_without_a_configured_provider_exits_two(data_dir: Path) -> None:
+    # AC-48: the default install cannot make a network call
+    seed(data_dir)
+    result = invoke("--data-dir", str(data_dir), "summarize", SESSION_ID)
+
+    assert result.exit_code == 2
+    assert "[notes] provider" in result.stderr
+    assert not (data_dir / "notes").exists()
+
+
+def test_an_unknown_notes_provider_is_the_same_shape_of_error(data_dir: Path) -> None:
+    # AC-48
+    seed(data_dir)
+    result = invoke("--data-dir", str(data_dir), "summarize", SESSION_ID, "--provider", "gpt")
+
+    assert result.exit_code == 2
+    assert "unknown notes provider" in result.stderr
+
+
+def test_summarizing_an_unknown_session_exits_one(data_dir: Path) -> None:
+    # AC-48
+    seed(data_dir)
+    result = invoke("--data-dir", str(data_dir), "summarize", "nope", "--provider", "fake")
+
+    assert result.exit_code == 1
+    assert "no session matches" in result.stderr
+
+
+def test_the_configured_extra_copy_gets_an_identical_note(data_dir: Path, tmp_path: Path) -> None:
+    # AC-49: the vault copy is the same bytes, not a re-render
+    seed(data_dir)
+    vault = tmp_path / "vault"
+    config = tmp_path / "config.toml"
+    config.write_text(
+        f'[output]\nextra_copy = "{vault}"\n\n[notes]\nprovider = "fake"\n', encoding="utf-8"
+    )
+
+    result = invoke("--config", str(config), "--data-dir", str(data_dir), "summarize", SESSION_ID)
+
+    assert result.exit_code == 0
+    note = data_dir / "notes" / f"{SESSION_ID}.md"
+    copy = vault / f"{SESSION_ID}.md"
+    assert copy.read_bytes() == note.read_bytes()
+    assert str(copy) in result.stdout

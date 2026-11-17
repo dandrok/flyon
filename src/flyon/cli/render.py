@@ -8,6 +8,7 @@ Import this module only on the human-output path — `--json` uses `flyon.cli.pa
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from rich.console import Console
 from rich.markup import escape
@@ -16,7 +17,10 @@ from rich.table import Table
 from flyon.cli.payloads import Row, duration_text
 from flyon.domain.transcript import Line, Session
 
-__all__ = ["Row", "console", "print_line", "print_lines", "print_sessions"]
+if TYPE_CHECKING:
+    from flyon.app.notes import NoteResult
+
+__all__ = ["Row", "console", "print_line", "print_lines", "print_note", "print_sessions"]
 
 
 def console() -> Console:
@@ -64,3 +68,17 @@ def print_lines(target: Console, session: Session, lines: Sequence[Line]) -> Non
         return
     for line in lines:
         print_line(target, line)
+
+
+def print_note(target: Console, result: NoteResult) -> None:
+    """Report what was written, where it went, and how much the note actually says.
+
+    Paths are printed with `soft_wrap`: a path broken across two lines is a path you cannot paste.
+    """
+    target.print(
+        f"[bold]{result.note.item_count} items[/bold] · "
+        f"{result.provider}:{result.model} · note written"
+    )
+    target.print(f"  {result.path}", soft_wrap=True)
+    if result.copy_path is not None:
+        target.print(f"  {result.copy_path} [dim](copy)[/dim]", soft_wrap=True)
