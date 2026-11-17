@@ -134,10 +134,24 @@ extra or capture tool is a **warn**, not a failure: the read commands work witho
 
 ## M2 — live capture and local STT
 
-Contract only; the slice that builds it refines these into tests.
+**Built (capture half):** AC-27 … AC-31 below are tested; the transcriber half is the next slice.
 
-- `Capturer.start(streams)` yields `(stream, level, frame_ms)` frames from `pw-record`/`parec`;
-  `stop()` is idempotent and closes every child process.
+- **AC-27 — `flyon doctor --probe` records for `--seconds` and reports frames per stream with the
+  peak level**, warning when a stream delivers nothing (muted, suspended bluetooth) and failing when
+  the capturer cannot start. Verified against real `parec` on this machine: 148 frames in 3.1 s,
+  peak 0.261 for a 440 Hz tone at 0.366 full scale (RMS = amplitude/√2 = 0.259).
+- **AC-28 — one frame is 20 ms of s16le mono at 16 kHz**, and the framer keeps a partial frame across
+  chunk boundaries instead of dropping it, because a pipe hands over whatever sizes it likes.
+- **AC-29 — a level is RMS normalised to 0…1**: silence 0.0, full-scale square 1.0, half amplitude
+  ≈ 0.5, a stray odd byte ignored.
+- **AC-30 — two streams, one capturer, one queue**; each frame carries its stream and its offset in
+  that stream, and the offsets advance by exactly one frame.
+- **AC-31 — the capture port is a tested seam**: `tests/contract/test_capturer.py` runs the same
+  criteria against a scripted fake and the real `parec` adapter driven by a fake process; `stop()` is
+  idempotent, a second `start()` raises, and a missing binary is a `CapturerError`, not a traceback.
+
+**Still to build:** the transcriber port and `faster-whisper` adapter, then blocking `listen`.
+
 - Both streams share a monotonic timeline, so a `mic` segment and a `system` segment can be ordered
   against each other.
 - The transcriber consumes 16 kHz mono float32 slices; an adapter that needs another rate resamples
@@ -181,6 +195,9 @@ Contract only; the slice that builds it refines these into tests.
 | AC-8 … AC-10 | `tests/unit/test_transcript.py` |
 | AC-11 … AC-17 | `tests/contract/test_store.py` |
 | AC-18 … AC-25, AC-JSON | `tests/unit/test_cli.py` |
+| AC-28 … AC-29 | `tests/unit/test_pcm.py` |
+| AC-31 (parec side), AC-27 | `tests/unit/test_parec.py`, `tests/unit/test_cli.py` |
+| AC-30 … AC-31 | `tests/contract/test_capturer.py` |
 | config load + overrides | `tests/unit/test_config.py` |
 | M2, M3 | written with their slice |
 

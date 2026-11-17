@@ -194,6 +194,50 @@ def test_doctor_reports_every_check_and_succeeds_when_nothing_failed(tmp_path: P
     assert "warn" in result.stdout
 
 
+def test_doctor_probe_reports_frames_per_stream(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # AC-27: the probe is a real capture, so the CLI is tested with a scripted capturer behind it
+    from flyon.adapters.capture.fake import FakeCapturer
+    from flyon.cli import doctor as doctor_module
+
+    script = [("mic", 0.3)] * 5 + [("system", 0.0)] * 5
+    monkeypatch.setattr(doctor_module, "_real_capturer", lambda: FakeCapturer(script))
+    result = invoke(
+        "--data-dir",
+        str(tmp_path / "d"),
+        "--cache-dir",
+        str(tmp_path / "c"),
+        "doctor",
+        "--probe",
+        "--seconds",
+        "0.2",
+    )
+    assert result.exit_code == 0
+    assert "probe mic" in result.stdout
+    assert "probe system" in result.stdout
+    assert "5 frames" in result.stdout
+
+
+def test_doctor_probe_without_a_capturer_fails_loudly() -> None:
+    from flyon.cli import doctor as doctor_module
+    from flyon.ports.capturer import CapturerError
+
+    class Broken:
+        def start(self) -> None:
+            raise CapturerError("parec: not found")
+
+        def stop(self) -> None:
+            pass
+
+        def frames(self):  # type: ignore[no-untyped-def]
+            return iter(())
+
+    checks = doctor_module.probe_capture(capturer=Broken(), seconds=0.1)  # type: ignore[arg-type]
+    assert checks[0].status == "fail"
+    assert "not found" in checks[0].detail
+
+
 def test_a_data_dir_that_cannot_be_a_database_exits_two_without_a_traceback(tmp_path: Path) -> None:
     blocked = tmp_path / "blocked"
     blocked.write_text("not a directory", encoding="utf-8")

@@ -40,6 +40,7 @@ A change that makes `domain/` import an adapter is rejected regardless of how we
 | You are adding | File |
 |---|---|
 | a rule about where a segment ends | `src/flyon/domain/segment.py` + `tests/unit/test_segment.py` |
+| a new capture source | `src/flyon/adapters/capture/<name>.py` + `tests/contract/test_capturer.py` |
 | a new engine | `src/flyon/adapters/stt/<name>.py` + one line in the contract test's parameters |
 | a new store | `src/flyon/adapters/store/<name>.py` + `tests/contract/test_store.py` |
 | a command | `src/flyon/cli/main.py`, rendering in `cli/render.py`, payload test in `tests/unit/test_cli.py` |

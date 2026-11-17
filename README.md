@@ -17,9 +17,10 @@ writes structured notes on demand. Audio stays on your machine unless you config
 
 ## Status
 
-`0.1.0` — the transcript core. Two-stream segmentation, the session store, and the read commands
-work and are tested. Live capture and speech-to-text land in the next slice; see
-[`spec.md`](spec.md) for the milestone map and the acceptance criteria behind every command.
+`0.1.0` — transcript core and capture. Two-stream segmentation, the session store, the read
+commands, and real audio capture from the microphone plus the default sink's monitor all work and are
+tested. Speech-to-text and `flyon listen` are the next slice; see [`spec.md`](spec.md) for the
+milestone map and the acceptance criteria behind every command.
 
 ## Install
 
@@ -40,6 +41,7 @@ uv tool install flyon
 | `flyon sessions` | every session, newest first |
 | `flyon show <id>` | one transcript, `mm:ss` per line, prefixed by stream |
 | `flyon doctor` | environment check: python, data dir, config, store, STT extra, capture tools |
+| `flyon doctor --probe` | records two seconds and reports frames + peak level per stream |
 
 Every read command takes `--json` and prints nothing else in that mode, so a script can consume
 it without stripping human chatter off the front.

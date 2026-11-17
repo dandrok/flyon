@@ -7,6 +7,14 @@ existing database or CLI invocation may stop working; a patch bump never does.
 
 ## [Unreleased]
 
+### Added
+
+- Real audio capture: one `parec` process per stream (microphone and the default sink's monitor),
+  raw `s16le` turned into 20 ms frames with an RMS level, fed to a single queue.
+- `flyon doctor --probe [--seconds N]` records briefly and reports frames and peak level per stream,
+  so "will this work in the meeting" has an answer that is not a PATH lookup.
+- A scripted `fake` capturer, so the pipeline and the contract test run without a sound card.
+
 ## [0.1.0] - 2026-11-17
 
 ### Added

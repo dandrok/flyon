@@ -44,7 +44,10 @@ capture (2 streams)  ->  segmenter (per stream)  ->  transcriber  ->  transcript
      parec/pw-record    domain/segment.py         ports/transcriber.py
 ```
 
-1. **capture** produces fixed frames (20 ms) per stream and pushes a level per frame;
+1. **capture** runs one `parec` process per stream, one pump thread per process; each pump reads
+   raw `s16le`, the framer turns bytes into 20 ms frames, and `Frame(stream, level, at_ms)` goes onto
+   a queue. A partial frame survives a chunk boundary, and the last short frame is flushed rather
+   than dropped;
 2. **segment** turns levels into `Segment(stream, start_ms, end_ms)` — silence closes a segment, a
    long monologue is force-cut at 15 s and continues as the next segment;
 3. **transcribe** takes a segment plus its audio slice and returns text (local Whisper by default);
@@ -73,7 +76,7 @@ Groq engine or a JSONL store must not require editing the module that computes s
 
 | Port | Contract | Adapters today |
 |---|---|---|
-| `capturer.Capturer` | start/stop two named streams, yield frames with levels | next slice |
+| `capturer.Capturer` | start/stop the streams, yield `Frame(stream, level, at_ms)` | `parec`, `fake` |
 | `transcriber.Transcriber` | `transcribe(frames, hint) -> text` | next slice |
 | `store.Store` | sessions and append-only lines | `sqlite`, `jsonl` |
 

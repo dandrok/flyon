@@ -10,6 +10,9 @@ import importlib.util
 import shutil
 import sqlite3
 import sys
+import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -20,6 +23,7 @@ from rich.table import Table
 
 from flyon.app.config import Settings, is_writable
 from flyon.domain.segment import STREAMS
+from flyon.ports.capturer import Capturer, CapturerError
 from flyon.ports.store import StoreError
 
 Status = Literal["ok", "warn", "fail"]
@@ -47,6 +51,72 @@ def run_checks(settings: Settings) -> list[Check]:
         _check_models(settings),
     ]
     return checks
+
+
+def probe_capture(
+    *,
+    seconds: float = 2.0,
+    capturer: Capturer | None = None,
+    make_capturer: Callable[[], Capturer] | None = None,
+) -> list[Check]:
+    """Record for `seconds` and report what each stream actually delivered.
+
+    `flyon doctor --probe` is the only honest answer to "will this work in the meeting", so it is a
+    real capture rather than a PATH lookup: frames per stream, and the peak level seen.
+    """
+    if seconds <= 0:
+        raise ValueError("seconds must be positive")
+    machine = capturer if capturer is not None else (make_capturer or _real_capturer)()
+    frames: dict[str, int] = {}
+    peaks: dict[str, float] = {}
+
+    def drain() -> None:
+        try:
+            for frame in machine.frames():
+                frames[frame.stream] = frames.get(frame.stream, 0) + 1
+                peaks[frame.stream] = max(peaks.get(frame.stream, 0.0), frame.level)
+        except CapturerError:  # a dying child is reported as a short count
+            return
+
+    try:
+        machine.start()
+    except CapturerError as exc:
+        return [Check("probe", "fail", str(exc))]
+    worker = threading.Thread(target=drain, name="flyon-probe", daemon=True)
+    worker.start()
+    try:
+        time.sleep(seconds)
+    finally:
+        machine.stop()
+        worker.join(timeout=5.0)
+
+    checks: list[Check] = []
+    for stream in sorted(STREAMS):
+        count = frames.get(stream, 0)
+        peak = peaks.get(stream, 0.0)
+        if count == 0:
+            checks.append(
+                Check(f"probe {stream}", "warn", "no frames — is that source muted or suspended?")
+            )
+        else:
+            expected = int(seconds * 1000 / 20)
+            health = "ok" if count >= expected * 0.5 else "warn"
+            checks.append(
+                Check(
+                    f"probe {stream}",
+                    health,
+                    f"{count} frames in {seconds:g}s (expect ~{expected}), peak {peak:.3f}",
+                )
+            )
+    if not frames:
+        checks.append(Check("probe", "fail", "the capturer produced nothing at all"))
+    return checks
+
+
+def _real_capturer() -> Capturer:
+    from flyon.adapters.capture.parec import ParecCapturer, default_streams
+
+    return ParecCapturer(default_streams())
 
 
 def worst_status(checks: list[Check]) -> Status:

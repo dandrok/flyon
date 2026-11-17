@@ -132,13 +132,25 @@ def show(
 
 
 @app.command()
-def doctor(ctx: typer.Context) -> None:
+def doctor(
+    ctx: typer.Context,
+    probe: Annotated[
+        bool,
+        typer.Option("--probe", help="Also record a couple of seconds and report what arrives."),
+    ] = False,
+    seconds: Annotated[
+        float,
+        typer.Option("--seconds", help="How long the probe records.", show_default=True),
+    ] = 2.0,
+) -> None:
     """Check that this machine can record and transcribe."""
     from flyon.cli import doctor as doctor_module
     from flyon.cli.render import console
 
     context = _context(ctx)
     checks = doctor_module.run_checks(context.settings)
+    if probe:
+        checks += doctor_module.probe_capture(seconds=seconds)
     target = console()
     doctor_module.print_checks(target, checks)
     target.print(
