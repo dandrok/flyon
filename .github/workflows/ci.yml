@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.14", "3.15"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install ${{ matrix.python }}
+      - run: uv sync --locked --python ${{ matrix.python }}
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run mypy
+      - run: uv run pytest --cov --cov-fail-under=80 -m "not slow"
+      - name: build and smoke-test the wheel
+        if: matrix.python == '3.14'
+        run: |
+          uv build
+          python3 -m venv /tmp/wheelcheck
+          /tmp/wheelcheck/bin/pip install --quiet dist/*.whl
+          /tmp/wheelcheck/bin/flyon --version

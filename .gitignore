@@ -1,0 +1,25 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# audio and transcripts never belong in git
+*.wav
+*.flac
+*.mp3
+*.m4a
+*.jsonl
+!tests/fixtures/*.jsonl
+
+.env
+.env.local
+.idea/
+.vscode/
+.DS_Store

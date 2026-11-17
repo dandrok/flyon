@@ -1,0 +1,80 @@
+[build-system]
+requires = ["hatchling>=1.33,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "flyon"
+version = "0.1.0"
+description = "Local-first meeting transcriber: two audio streams, a live transcript, notes on demand."
+readme = "README.md"
+requires-python = ">=3.14"
+license = "MIT"
+authors = [{ name = "dandrok", email = "46764643+dandrok@users.noreply.github.com" }]
+keywords = ["transcription", "whisper", "meetings", "cli", "local-first"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+dependencies = [
+  "pydantic>=2.14,<3",
+  "platformdirs>=4.3,<5",
+  "rich>=15,<16",
+  "typer>=0.29,<1",
+]
+
+[project.optional-dependencies]
+stt = ["faster-whisper>=1.2,<2"]
+vad = ["silero-vad-lite>=0.4,<1"]
+notes = ["google-genai>=3.3,<4"]
+all = ["flyon[stt,vad,notes]"]
+
+[project.scripts]
+flyon = "flyon.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/dandrok/flyon"
+Issues = "https://github.com/dandrok/flyon/issues"
+
+[dependency-groups]
+dev = [
+  "mypy>=2.4,<3",
+  "pytest>=9.2,<10",
+  "pytest-cov>=7.1,<8",
+  "ruff>=0.17,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/flyon"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = ["slow: needs a model download or real audio (excluded from make check)"]
+
+[tool.coverage.run]
+source = ["src/flyon"]
+
+[tool.coverage.report]
+fail_under = 80
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "S", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unreachable = true
+files = ["src/flyon/domain", "src/flyon/ports"]
