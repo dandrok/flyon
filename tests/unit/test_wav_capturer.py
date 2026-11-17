@@ -60,14 +60,13 @@ def test_both_streams_share_the_timeline() -> None:
         assert all(later - earlier == FRAME_MS for earlier, later in pairwise(offsets))
 
 
-def test_a_partial_last_frame_is_padded_not_dropped() -> None:
+def test_a_partial_last_frame_is_padded_not_dropped(tmp_path: Path) -> None:
     # AC-51: 10 ms of audio is not a reason to raise
-    path = write_wav(Path("/workspace/flyon/.tmp-short.wav"), frames=160)
+    path = write_wav(tmp_path / "short.wav", frames=160)
     capturer = WavCapturer(path)
     capturer.start()
     frames = [frame for frame in capturer.frames() if frame.stream == MIC]
     capturer.stop()
-    path.unlink()
 
     assert len(frames) == 1
     assert len(frames[0].pcm) == 640
