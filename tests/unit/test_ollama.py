@@ -93,6 +93,13 @@ def test_the_host_is_configuration() -> None:
     assert transport.calls[0][0] == "http://box.local:11500/api/chat"
 
 
+def test_a_host_that_is_not_http_is_refused() -> None:
+    # AC-53: the config names a daemon, not a scheme urlopen would happily read
+    for bad in ("file:///etc/passwd", "ftp://box", "box.local:11434", ""):
+        with pytest.raises(ValueError, match="http"):
+            OllamaNotes(host=bad, transport=Recorder(reply(json.dumps(ANSWER))))
+
+
 def test_an_unreachable_daemon_says_what_to_start() -> None:
     # AC-44: the commonest failure on a fresh machine, so the message names the fix
     transport = Recorder(urllib.error.URLError("connection refused"))

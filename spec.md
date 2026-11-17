@@ -230,6 +230,14 @@ real model by AC-41.
   session chosen from evidence — measured on a 19 s Polish clip, the transcript came back Polish, where
   guessing from 1.5 s fragments labelled Polish as Hungarian and transliterated it.
 
+- **AC-53 — the three things the app trusts are the three things it validates.** A `Session.session_id`
+  is a filename-safe token (`[A-Za-z0-9_-]{1,64}`), because that value names a file in both stores and in
+  the notes directory — so a session id can never arrive at the filesystem as a path. The notes host must
+  be an `http(s)` URL, so a config cannot aim `urlopen` at `file:` or a custom scheme. The prompt states
+  that the transcript is data and not instructions, because anyone in the meeting can put a sentence in
+  it. Workflows declare `permissions: contents: read` unless a job needs more, so the token CI holds is
+  the smallest one it can do the work with.
+
 **Still to build:** nothing for M2; M3 (notes) is untouched.
 
 - Both streams share a monotonic timeline, so a `mic` segment and a `system` segment can be ordered
@@ -334,6 +342,7 @@ argued into the default; it has to be measured against a local one.
 | AC-50 | `tests/unit/test_render.py`, `tests/unit/test_session.py`, `tests/unit/test_listen.py` |
 | AC-51 | `tests/unit/test_wav_capturer.py`, `tests/contract/test_capturer.py`, `tests/e2e/test_real_whisper.py` |
 | AC-52 | `tests/unit/test_faster_whisper.py`, `tests/unit/test_wiring.py` |
+| AC-53 | `tests/unit/test_transcript.py`, `tests/unit/test_ollama.py`, `tests/unit/test_prompt.py` |
 | config load + overrides | `tests/unit/test_config.py` |
 
 ## Out of scope

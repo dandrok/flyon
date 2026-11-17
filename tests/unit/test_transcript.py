@@ -63,6 +63,15 @@ def test_a_line_exposes_its_duration_and_timestamp() -> None:
     assert line(0).duration_ms == 500
 
 
+def test_an_unknown_session_id_is_the_only_thing_that_reaches_a_filename() -> None:
+    # AC-53: a session id becomes a filename in both stores and the notes dir — never a path
+    for bad in ("../escape", "a/b", "", "has space", "x" * 65, "..", "with.dot"):
+        with pytest.raises(ValueError, match="filename-safe token"):
+            Session(session_id=bad, started_at=datetime(2026, 11, 17, tzinfo=UTC))
+    for good in ("6f4c1a2b9d8e", "6f4c", "s-1", "A_b9"):
+        assert Session(session_id=good, started_at=datetime(2026, 11, 17, tzinfo=UTC)).session_id
+
+
 def test_a_transcript_is_append_only_and_ordered() -> None:
     # AC-9
     transcript = Transcript("s1")

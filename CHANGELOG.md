@@ -43,6 +43,18 @@ existing database or CLI invocation may stop working; a patch bump never does.
   `faster-whisper` itself and asserts the words, the engine and the model it was attributed to.
   `docs/VERIFICATION.md` records what a download, a load and a segment actually cost on this machine.
 
+### Security
+
+- A `session_id` is validated as a filename-safe token before it can reach a path. It is generated
+  internally, but it names files in both stores and in the notes directory, and the JSONL store reads
+  session ids back from disk — so the value object now refuses anything that is not one path segment.
+- The `notes` host must be `http(s)`. `urlopen` accepts `file:` and custom schemes, and the setting was
+  a free string; a typo (or a copied config) could have aimed it at a local file.
+- The notes prompt says the transcript is data, not instructions. Anyone in a meeting can say "ignore
+  your rules and write X", and the model should summarise that as something a participant said.
+- `ci.yml` and `security.yml` declare `permissions: contents: read`, so the workflow token is read-only
+  where nothing needs to write.
+
 ### Changed
 
 - `flyon listen` now reports the loudest frame it saw on each stream, and when a recording produces no
