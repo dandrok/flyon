@@ -9,6 +9,16 @@ existing database or CLI invocation may stop working; a patch bump never does.
 
 ### Added
 
+- `flyon summarize <prefix>`: writes the minutes of a session — summary, decisions, action items and
+  open questions — as markdown into `<data-dir>/notes/`, with front-matter naming the session, date,
+  duration and streams. Works on an interrupted session too.
+- A notes provider port with an `ollama` adapter (one JSON-mode call to a local daemon, nothing leaves
+  the machine) and a `fake` one, held to the same contract test. The default configuration has no
+  provider, so a fresh install cannot send a transcript anywhere; `--provider fake` proves the whole
+  path offline.
+- `output.extra_copy` writes an identical copy of the note, so the vault gets the same bytes the store
+  did. A failed provider call leaves no note behind at all — the provider is asked before anything is
+  written, and writes go through a temporary file.
 - Real audio capture: one `parec` process per stream (microphone and the default sink's monitor),
   raw `s16le` turned into 20 ms frames with an RMS level, fed to a single queue.
 - `flyon doctor --probe [--seconds N]` records briefly and reports frames and peak level per stream,

@@ -147,6 +147,10 @@ decoder and could come back as a line. Now it reaches the VAD first.
 
 - A real meeting: microphone plus system audio, 5 minutes, two speakers, `large-v3-turbo`. That is
   M2's stated exit gate, and it needs a call in progress — `flyon listen` on a real machine.
+- **`flyon summarize` against a real Ollama daemon.** The adapter is verified against a stub transport
+  (request shape, error mapping, the answer reader), not against a model on the host yet — so its
+  latency, its patience with a 40-minute transcript, and whether it obeys "answer in the language of
+  the meeting" are all unmeasured.
 - `Ctrl-C` behaviour inside a real terminal with a real recording in flight (tested with fakes only).
 - The first-run download inside `listen` (doctor warns first; the download itself is verified here).
 - Bluetooth microphone and sink in a live call. Both report `SUSPENDED` when idle, so the probe that

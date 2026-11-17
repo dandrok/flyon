@@ -56,6 +56,21 @@ class OutputSettings(BaseModel):
         return Path(self.extra_copy).expanduser() if self.extra_copy else None
 
 
+class NotesSettings(BaseModel):
+    """Which provider writes the minutes. Empty provider means nothing is sent anywhere."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    provider: str = ""
+    model: str = "llama3.2"
+    host: str = "http://localhost:11434"
+    timeout_s: float = Field(default=180.0, gt=0)
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.provider.strip())
+
+
 class Settings(BaseModel):
     """Everything a command needs to know about this install."""
 
@@ -71,6 +86,7 @@ class Settings(BaseModel):
     config_found: bool = False
     output: OutputSettings = OutputSettings()
     segmenter: SegmenterSettings = SegmenterSettings()
+    notes: NotesSettings = NotesSettings()
 
     def database_path(self) -> Path:
         return self.data_dir / "flyon.db"
@@ -123,6 +139,7 @@ def load_settings(
             config_found=path.is_file(),
             output=OutputSettings.model_validate(raw.get("output") or {}),
             segmenter=SegmenterSettings.model_validate(raw.get("segmenter") or {}),
+            notes=NotesSettings.model_validate(raw.get("notes") or {}),
         )
     except ValidationError as exc:
         raise SettingsError(f"invalid configuration in {path}: {exc}") from exc
@@ -152,6 +169,11 @@ min_segment_ms = 250       # shorter than this is noise, not speech
 
 [output]
 extra_copy = ""            # e.g. "~/Documents/obsidian-root/Meetings"
+
+[notes]
+provider = ""              # "ollama" writes the minutes locally; empty = no note, no network call
+model = "llama3.2"
+host = "http://localhost:11434"
 """
 
 

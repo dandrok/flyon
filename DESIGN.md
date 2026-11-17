@@ -87,6 +87,7 @@ Groq engine or a JSONL store must not require editing the module that computes s
 | `capturer.Capturer` | start/stop the streams, yield `Frame(stream, level, at_ms)` | `parec`, `fake` |
 | `transcriber.Transcriber` | `transcribe(pcm) -> Transcription(text, engine, model)` | `faster-whisper`, `fake` |
 | `store.Store` | sessions and append-only lines | `sqlite`, `jsonl` |
+| `notes.NotesProvider` | `summarize(transcript) -> Note(summary, decisions, actions, questions)` | `ollama`, `fake` |
 
 Which store is live is configuration (`store = "sqlite" | "jsonl"`), resolved in one place,
 `app/wiring.py`. The CLI never imports an adapter, which is what makes the second backend a setting

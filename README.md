@@ -17,10 +17,10 @@ writes structured notes on demand. Audio stays on your machine unless you config
 
 ## Status
 
-`0.1.0` — transcript core and capture. Two-stream segmentation, the session store, the read
-commands, and real audio capture from the microphone plus the default sink's monitor all work and are
-tested. Speech-to-text and `flyon listen` are the next slice; see [`spec.md`](spec.md) for the
-milestone map and the acceptance criteria behind every command.
+`0.1.0` — transcript core, capture and notes. Two-stream segmentation, the session store, the read
+commands, real audio capture from the microphone plus the default sink's monitor, live transcription
+with a local Whisper model, and minutes on demand through a local provider. See
+[`spec.md`](spec.md) for the milestone map and the acceptance criteria behind every command.
 
 ## Install
 
@@ -42,6 +42,7 @@ uv tool install flyon
 | `flyon show <id>` | one transcript, `mm:ss` per line, prefixed by stream |
 | `flyon doctor` | environment check: python, data dir, config, store, STT extra, capture tools |
 | `flyon listen` | record, transcribe live, save the session; Ctrl-C stops |
+| `flyon summarize <id>` | write the minutes: summary, decisions, action items, open questions |
 | `flyon doctor --probe` | records two seconds and reports frames + peak level per stream |
 
 Every read command takes `--json` and prints nothing else in that mode, so a script can consume
@@ -64,6 +65,18 @@ To see the whole loop with no microphone and no model download:
 ```bash
 flyon listen --source fake --engine fake
 ```
+
+## Writing the minutes
+
+```bash
+flyon summarize 6f4c                  # the configured provider, ollama by default
+flyon summarize 6f4c --provider fake  # the whole path, no model, nothing sent anywhere
+```
+
+The note lands in `~/.local/share/flyon/notes/<session>.md`: front-matter (session, date, duration,
+streams) and four sections — summary, decisions, action items, open questions. With
+`[output] extra_copy` set you get an identical copy there as well, which is how a note reaches the
+vault. A failed provider call leaves no note behind at all.
 
 ## One worked example
 
@@ -124,6 +137,11 @@ min_segment_ms = 250     # shorter than this is dropped as noise
 
 [output]
 extra_copy = ""          # e.g. "~/Documents/obsidian-root/Meetings"
+
+[notes]
+provider = ""            # "ollama" writes the minutes locally; empty = no note, no network call
+model = "llama3.2"
+host = "http://localhost:11434"
 ```
 
 ## Development

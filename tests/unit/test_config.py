@@ -57,6 +57,27 @@ def test_the_written_config_round_trips_to_the_default_model(tmp_path: Path) -> 
     assert reloaded.model == settings.model == DEFAULT_MODEL
 
 
+def test_the_notes_provider_is_empty_until_configured(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # AC-48: the default install cannot send a transcript anywhere
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "cfg"))
+    assert load_settings().notes.provider == ""
+    assert load_settings().notes.configured is False
+
+    config = tmp_path / "config.toml"
+    config.write_text(
+        '[notes]\nprovider = "ollama"\nmodel = "mistral"\nhost = "http://box:11434"\n',
+        encoding="utf-8",
+    )
+    settings = load_settings(config=config)
+
+    assert settings.notes.configured is True
+    assert settings.notes.model == "mistral"
+    assert settings.notes.host == "http://box:11434"
+    assert settings.notes.timeout_s == 180.0
+
+
 def test_flags_win_over_the_platformdirs_defaults(tmp_path: Path) -> None:
     settings = load_settings(data_dir=tmp_path / "data", cache_dir=tmp_path / "cache")
     assert settings.data_dir == tmp_path / "data"

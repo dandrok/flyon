@@ -189,6 +189,49 @@ def listen(
 
 
 @app.command()
+def summarize(
+    ctx: typer.Context,
+    session_id: Annotated[str, typer.Argument(help="Session id, or any unique prefix of one.")],
+    provider: Annotated[
+        str,
+        typer.Option(
+            "--provider",
+            help="ollama (the configured default) or fake.",
+            show_default=False,
+        ),
+    ] = "",
+) -> None:
+    """Write the minutes of a session: summary, decisions, actions, open questions."""
+    from flyon.app.notes import summarize_session
+    from flyon.app.wiring import open_notes_provider
+    from flyon.cli import render
+    from flyon.ports.notes import NotesError
+
+    context = _context(ctx)
+    session = _resolve_session(context.store, session_id)
+    try:
+        notes = open_notes_provider(context.settings, provider or None)
+    except ValueError as exc:
+        typer.echo(f"flyon: {exc}", err=True)
+        raise typer.Exit(2) from exc
+
+    target = render.console()
+    target.print(f"[dim]{notes.name}:{notes.model} is reading the transcript…[/dim]")
+    try:
+        result = summarize_session(
+            store=context.store,
+            provider=notes,
+            session=session,
+            data_dir=context.settings.data_dir,
+            extra_copy=context.settings.output.extra_copy_path(),
+        )
+    except NotesError as exc:
+        typer.echo(f"flyon: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    render.print_note(target, result)
+
+
+@app.command()
 def doctor(
     ctx: typer.Context,
     probe: Annotated[
