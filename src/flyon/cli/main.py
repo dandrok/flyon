@@ -252,6 +252,34 @@ def summarize(
 
 
 @app.command()
+def config(
+    ctx: typer.Context,
+    init: Annotated[
+        bool, typer.Option("--init", help="Write a commented config.toml holding the defaults.")
+    ] = False,
+    force: Annotated[
+        bool, typer.Option("--force", help="Overwrite a config.toml that already exists.")
+    ] = False,
+) -> None:
+    """Show where the config lives, or write a starter one."""
+    from flyon.app.config import SettingsError, write_default_config
+
+    context = _context(ctx)
+    path = context.settings.config_path
+    if not init:
+        state = "exists" if path.exists() else "absent — built-in defaults are in use"
+        typer.echo(f"{path} ({state})")
+        typer.echo("flyon config --init   write a commented file with the defaults")
+        return
+    try:
+        written = write_default_config(context.settings, force=force)
+    except SettingsError as exc:
+        typer.echo(f"flyon: {exc} — pass --force to overwrite", err=True)
+        raise typer.Exit(2) from exc
+    typer.echo(f"wrote {written}")
+
+
+@app.command()
 def doctor(
     ctx: typer.Context,
     probe: Annotated[

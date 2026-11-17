@@ -5,19 +5,34 @@ build-backend = "hatchling.build"
 [project]
 name = "flyon"
 version = "0.1.0"
-description = "Local-first meeting transcriber: two audio streams, a live transcript, notes on demand."
+description = "Local-first meeting transcriber: two audio streams, live transcript, minutes on demand."
 readme = "README.md"
 requires-python = ">=3.14"
 license = "MIT"
 authors = [{ name = "dandrok", email = "46764643+dandrok@users.noreply.github.com" }]
-keywords = ["transcription", "whisper", "meetings", "cli", "local-first"]
+keywords = [
+  "transcription",
+  "speech-to-text",
+  "whisper",
+  "faster-whisper",
+  "meetings",
+  "meeting-notes",
+  "cli",
+  "offline",
+  "local-first",
+  "privacy",
+  "ollama",
+]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
   "Intended Audience :: End Users/Desktop",
   "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
   "Programming Language :: Python :: 3.14",
   "Topic :: Multimedia :: Sound/Audio :: Speech",
+  "Topic :: Office/Business",
+  "Typing :: Typed",
 ]
 dependencies = [
   "pydantic>=2.14,<3",
@@ -37,7 +52,9 @@ flyon = "flyon.cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/dandrok/flyon"
+Source = "https://github.com/dandrok/flyon"
 Issues = "https://github.com/dandrok/flyon/issues"
+Changelog = "https://github.com/dandrok/flyon/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = [

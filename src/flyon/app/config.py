@@ -158,21 +158,23 @@ DEFAULT_CONFIG_TEXT = f"""\
 # flyon configuration. Every key below is optional; these are the defaults.
 store = "sqlite"           # sqlite (queryable) or jsonl (plain append-only files)
 engine = "faster-whisper"
-model = "{DEFAULT_MODEL}"          # small keeps up live; large-v3-turbo is for reading afterwards
-language = ""              # empty = autodetect
+model = "{DEFAULT_MODEL}"            # 464 MB, ~1.7 s per segment: keeps up live.
+                           # "large-v3-turbo" (1.6 GB) transcribes better, ~7 s per segment
+language = ""              # empty = decided once per session, then kept.
+                           # "pl" or "en" pins it for every segment
 
 [segmenter]
-voice_threshold = 0.02     # RMS level that counts as speech
+voice_threshold = 0.02     # RMS level that counts as speech — lower it for quiet headsets
 silence_ms = 800           # this much silence closes a segment
 max_segment_ms = 15000     # a monologue is cut here and continues as the next segment
 min_segment_ms = 250       # shorter than this is noise, not speech
 
 [output]
-extra_copy = ""            # e.g. "~/Documents/obsidian-root/Meetings"
+extra_copy = ""            # e.g. "~/Documents/obsidian-root/Meetings" — the note, copied there too
 
 [notes]
 provider = ""              # "ollama" writes the minutes locally; empty = no note, no network call
-model = "llama3.2"
+model = "llama3.2"         # a name from `ollama list`
 host = "http://localhost:11434"
 """
 

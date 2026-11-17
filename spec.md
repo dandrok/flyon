@@ -238,6 +238,12 @@ real model by AC-41.
   it. Workflows declare `permissions: contents: read` unless a job needs more, so the token CI holds is
   the smallest one it can do the work with.
 
+- **AC-54 — the config can be generated, and generating it cannot produce a file the loader rejects.**
+  `flyon config` prints where the file lives and whether it exists; `flyon config --init` writes a
+  commented file holding the current defaults and refuses to overwrite without `--force` (exit 2,
+  naming the flag). A test writes that file and then runs a command against it, because a generated
+  default that the loader would reject is worse than no generator at all.
+
 **Still to build:** nothing for M2; M3 (notes) is untouched.
 
 - Both streams share a monotonic timeline, so a `mic` segment and a `system` segment can be ordered
@@ -343,6 +349,7 @@ argued into the default; it has to be measured against a local one.
 | AC-51 | `tests/unit/test_wav_capturer.py`, `tests/contract/test_capturer.py`, `tests/e2e/test_real_whisper.py` |
 | AC-52 | `tests/unit/test_faster_whisper.py`, `tests/unit/test_wiring.py` |
 | AC-53 | `tests/unit/test_transcript.py`, `tests/unit/test_ollama.py`, `tests/unit/test_prompt.py` |
+| AC-54 | `tests/unit/test_cli.py` |
 | config load + overrides | `tests/unit/test_config.py` |
 
 ## Out of scope
